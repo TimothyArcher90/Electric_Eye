@@ -1,0 +1,366 @@
+import type {
+  ExpressionSpecification,
+  LayerSpecification,
+  SourceSpecification,
+  StyleSpecification,
+} from 'maplibre-gl';
+import type {EstiloId, OpcionesEstilo} from './proyecto';
+
+// ── Fuentes externas (gratuitas, sin clave). Cada una con su atribución. ──────────
+export const FUENTES = {
+  // Elevación Terrarium (Mapzen/Joerd) en AWS Open Data. Sin clave.
+  terreno: 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
+  // Sentinel-2 cloudless 2016 de EOX: CC BY 4.0 (uso comercial permitido con atribución).
+  satelite: 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless_3857/default/g/{z}/{y}/{x}.jpg',
+  // OpenFreeMap: teselas vectoriales de OpenStreetMap, gratis y sin clave.
+  calles: 'https://tiles.openfreemap.org/styles/liberty',
+};
+
+export const ATRIBUCION = {
+  ne: 'Natural Earth',
+  terreno: 'Relieve: Mapzen/Joerd, AWS Terrain Tiles',
+  satelite: 'Sentinel-2 cloudless 2016 by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2016 & 2017)',
+  calles: '© OpenMapTiles © OpenStreetMap contributors · OpenFreeMap',
+};
+
+export type Paleta = {
+  espacio: string;
+  oceano: string;
+  tierra: string;
+  frontera: string;
+  costa: string;
+  provincia: string;
+  rio: string;
+  lago: string;
+  etiquetaPais: string;
+  haloPais: string;
+  ciudad: string;
+  ciudadTexto: string;
+  haloCiudad: string;
+  mar: string;
+  sombra: string;
+  luz: string;
+  intensidadRelieve: number;
+  politico: string[];
+  acento: string;
+};
+
+export const PALETAS: Record<EstiloId, Paleta> = {
+  // Papel de escritorio: crema, azul grisáceo, tinta marrón. El registro documental.
+  documental: {
+    espacio: '#E8DFCB', oceano: '#AFC3C3', tierra: '#EFE6D1', frontera: '#5E5242', costa: '#6E6250',
+    provincia: 'rgba(94,82,66,0.35)', rio: '#8EA9AC', lago: '#AFC3C3',
+    etiquetaPais: '#3B3226', haloPais: 'rgba(239,230,209,0.85)', ciudad: '#2B241B', ciudadTexto: '#2B241B',
+    haloCiudad: 'rgba(239,230,209,0.9)', mar: '#5F7C80', sombra: '#5A4B36', luz: '#FFFFFF', intensidadRelieve: 0.35,
+    politico: ['#E9D9B6', '#DCCBA6', '#E6D3C0', '#D8D2B0', '#E3DCC2', '#D9C9B0', '#E8DCC8'],
+    acento: '#B3261E',
+  },
+  // Geopolítico: mar azul profundo, tierra con relieve marcado, etiquetas blancas.
+  geopolitico: {
+    espacio: '#0B121B', oceano: '#1E3248', tierra: '#B3AB8C', frontera: '#F4EFE3', costa: '#132235',
+    provincia: 'rgba(244,239,227,0.35)', rio: '#4D6E8C', lago: '#1E3248',
+    etiquetaPais: '#FFFFFF', haloPais: 'rgba(15,22,32,0.75)', ciudad: '#F2C230', ciudadTexto: '#FFFFFF',
+    haloCiudad: 'rgba(15,22,32,0.8)', mar: '#8FB0CF', sombra: '#2B2416', luz: '#FFF8E8', intensidadRelieve: 0.6,
+    politico: ['#B9A97F', '#A9AE86', '#BFA58D', '#9FA78D', '#B4B08A', '#AE9D7E', '#C1B193'],
+    acento: '#E0402B',
+  },
+  // Noche: Warm Black de MacroWise, acentos en oro.
+  noche: {
+    espacio: '#0F0F0D', oceano: '#161614', tierra: '#2A2924', frontera: '#5A574D', costa: '#3A3832',
+    provincia: 'rgba(255,255,255,0.08)', rio: '#2F3A3E', lago: '#161614',
+    etiquetaPais: '#D8D3C4', haloPais: 'rgba(15,15,13,0.8)', ciudad: '#C9A84C', ciudadTexto: '#E9E4D6',
+    haloCiudad: 'rgba(15,15,13,0.85)', mar: '#5E5B52', sombra: '#000000', luz: '#6B675C', intensidadRelieve: 0.4,
+    politico: ['#34332C', '#2F2E28', '#3A382F', '#2C2B26', '#36342D', '#31302A', '#3B3931'],
+    acento: '#C9A84C',
+  },
+  // Minimal: limpio, tipo explicador.
+  minimal: {
+    espacio: '#F4F2EE', oceano: '#DDE3E8', tierra: '#FFFFFF', frontera: '#B8BCC2', costa: '#C9CED4',
+    provincia: 'rgba(0,0,0,0.08)', rio: '#C9D3DC', lago: '#DDE3E8',
+    etiquetaPais: '#4A4F57', haloPais: 'rgba(255,255,255,0.9)', ciudad: '#2E3238', ciudadTexto: '#2E3238',
+    haloCiudad: 'rgba(255,255,255,0.9)', mar: '#8A99A8', sombra: '#5A6470', luz: '#FFFFFF', intensidadRelieve: 0.2,
+    politico: ['#F3F0E8', '#EEF1F4', '#F1EEF3', '#EEF3EF', '#F4F1EC', '#EFEFF1', '#F2EFEA'],
+    acento: '#E0402B',
+  },
+  satelite: {
+    espacio: '#05070A', oceano: '#0B1A2A', tierra: '#3A4A35', frontera: 'rgba(255,255,255,0.85)', costa: 'rgba(255,255,255,0)',
+    provincia: 'rgba(255,255,255,0.35)', rio: 'rgba(0,0,0,0)', lago: 'rgba(0,0,0,0)',
+    etiquetaPais: '#FFFFFF', haloPais: 'rgba(0,0,0,0.7)', ciudad: '#FFFFFF', ciudadTexto: '#FFFFFF',
+    haloCiudad: 'rgba(0,0,0,0.75)', mar: '#BFD6EA', sombra: '#000000', luz: '#FFFFFF', intensidadRelieve: 0.25,
+    politico: ['rgba(0,0,0,0)'],
+    acento: '#FF4A2E',
+  },
+  calles: {
+    espacio: '#E9E6DF', oceano: '#A0C8F0', tierra: '#F8F4F0', frontera: '#8C7FA6', costa: 'rgba(0,0,0,0)',
+    provincia: 'rgba(140,127,166,0.4)', rio: 'rgba(0,0,0,0)', lago: 'rgba(0,0,0,0)',
+    etiquetaPais: '#334', haloPais: 'rgba(255,255,255,0.9)', ciudad: '#333', ciudadTexto: '#333',
+    haloCiudad: 'rgba(255,255,255,0.9)', mar: '#5D80A6', sombra: '#473B24', luz: '#FFFFFF', intensidadRelieve: 0.25,
+    politico: ['rgba(0,0,0,0)'],
+    acento: '#E0402B',
+  },
+};
+
+export const NOMBRES_ESTILO: Record<EstiloId, string> = {
+  documental: 'Documental (papel)',
+  geopolitico: 'Geopolítico (relieve)',
+  noche: 'Noche',
+  minimal: 'Minimal',
+  satelite: 'Satélite',
+  calles: 'Calles (OSM)',
+};
+
+const abs = (ruta: string) => new URL(ruta, document.baseURI).href;
+
+export const FUENTE_MEDIA = ['Noto Sans Medium'];
+export const FUENTE_REGULAR = ['Noto Sans Regular'];
+export const FUENTE_CURSIVA = ['Noto Sans Italic'];
+
+const nombre = (o: OpcionesEstilo): ExpressionSpecification =>
+  o.idioma === 'es'
+    ? ['coalesce', ['get', 'nombre'], ['get', 'nombre_en'], '']
+    : ['coalesce', ['get', 'nombre_en'], ['get', 'nombre'], ''];
+
+/** Fuentes de datos propias del portal (Natural Earth local + capas del proyecto). */
+const fuentesBase = (): Record<string, SourceSpecification> => ({
+  'ne-paises': {type: 'geojson', data: abs('data/paises.geojson'), promoteId: 'iso', tolerance: 0.3},
+  'ne-etiquetas': {type: 'geojson', data: abs('data/paises-etiquetas.geojson')},
+  'ne-ciudades': {type: 'geojson', data: abs('data/ciudades.geojson')},
+  'ne-rios': {type: 'geojson', data: abs('data/rios.geojson'), tolerance: 0.5},
+  'ne-lagos': {type: 'geojson', data: abs('data/lagos.geojson')},
+  'ne-mares': {type: 'geojson', data: abs('data/mares.geojson')},
+  'ne-provincias': {type: 'geojson', data: abs('data/provincias-lineas.geojson'), tolerance: 0.5},
+  'mm-zonas': {type: 'geojson', data: {type: 'FeatureCollection', features: []}},
+  'mm-rutas': {type: 'geojson', data: {type: 'FeatureCollection', features: []}, lineMetrics: true},
+  'mm-flechas': {type: 'geojson', data: {type: 'FeatureCollection', features: []}},
+  'mm-pins': {type: 'geojson', data: {type: 'FeatureCollection', features: []}},
+  'mm-textos': {type: 'geojson', data: {type: 'FeatureCollection', features: []}},
+  'mm-borrador': {type: 'geojson', data: {type: 'FeatureCollection', features: []}},
+});
+
+const fuentesRelieve = (): Record<string, SourceSpecification> => ({
+  'dem-sombra': {type: 'raster-dem', tiles: [FUENTES.terreno], encoding: 'terrarium', tileSize: 256, maxzoom: 13,
+    attribution: ATRIBUCION.terreno},
+  'dem-3d': {type: 'raster-dem', tiles: [FUENTES.terreno], encoding: 'terrarium', tileSize: 256, maxzoom: 13},
+});
+
+/** Capas cartográficas del mapa base (debajo de las anotaciones). */
+const capasBase = (id: EstiloId, c: Paleta, o: OpcionesEstilo): LayerSpecification[] => {
+  const capas: LayerSpecification[] = [];
+  const esVectorPropio = id !== 'calles';
+
+  if (esVectorPropio) {
+    capas.push({id: 'oceano', type: 'background', paint: {'background-color': c.oceano}});
+    if (id === 'satelite') {
+      capas.push({id: 'satelite', type: 'raster', source: 'sat', paint: {'raster-saturation': -0.1, 'raster-contrast': 0.08}});
+    } else {
+      capas.push({id: 'tierra', type: 'fill', source: 'ne-paises', paint: {'fill-color': c.tierra, 'fill-antialias': true}});
+      if (o.colorearPaises) {
+        const pal = c.politico;
+        capas.push({id: 'tierra-politica', type: 'fill', source: 'ne-paises', paint: {
+          'fill-color': ['match', ['%', ['coalesce', ['get', 'mc7'], 1], pal.length],
+            ...pal.flatMap((col, i) => [i, col]), pal[0]] as unknown as ExpressionSpecification,
+        }});
+      }
+    }
+  }
+
+  // Resaltado de países por feature-state: color y opacidad cambian por fotograma.
+  capas.push({id: 'mm-pais-relleno', type: 'fill', source: 'ne-paises', paint: {
+    'fill-color': ['coalesce', ['feature-state', 'color'], '#000000'],
+    'fill-opacity': ['coalesce', ['feature-state', 'op'], 0],
+  }});
+
+  if (esVectorPropio && id !== 'satelite') {
+    capas.push({id: 'lagos', type: 'fill', source: 'ne-lagos', paint: {'fill-color': c.lago}});
+  }
+
+  if (o.relieve) {
+    capas.push({id: 'relieve', type: 'hillshade', source: 'dem-sombra', paint: {
+      'hillshade-exaggeration': c.intensidadRelieve,
+      'hillshade-shadow-color': c.sombra,
+      'hillshade-highlight-color': c.luz,
+      'hillshade-accent-color': c.sombra,
+      'hillshade-illumination-direction': 315,
+    }});
+  }
+
+  if (esVectorPropio) {
+    if (o.rios && id !== 'satelite') {
+      capas.push({id: 'rios', type: 'line', source: 'ne-rios', minzoom: 2.5, paint: {
+        'line-color': c.rio,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.4, 6, 1.2, 9, 2.2],
+      }});
+    }
+    if (o.provincias) {
+      capas.push({id: 'provincias', type: 'line', source: 'ne-provincias', minzoom: 3, paint: {
+        'line-color': c.provincia, 'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.4, 8, 1.2],
+        'line-dasharray': [3, 2],
+      }});
+    }
+    capas.push({id: 'fronteras', type: 'line', source: 'ne-paises', paint: {
+      'line-color': c.frontera,
+      'line-width': ['interpolate', ['linear'], ['zoom'], 1, 0.5, 4, 1, 7, 1.8, 10, 2.6],
+    }});
+  } else if (o.provincias) {
+    capas.push({id: 'provincias', type: 'line', source: 'ne-provincias', minzoom: 3, paint: {
+      'line-color': c.provincia, 'line-width': 1, 'line-dasharray': [3, 2]}});
+  }
+  return capas;
+};
+
+/** Anotaciones del proyecto: países resaltados (borde), zonas, rutas, pines y textos. */
+const capasAnotacion = (c: Paleta): LayerSpecification[] => [
+  {id: 'mm-pais-borde', type: 'line', source: 'ne-paises', paint: {
+    'line-color': ['coalesce', ['feature-state', 'borde'], c.frontera],
+    'line-opacity': ['coalesce', ['feature-state', 'opBorde'], 0],
+    'line-width': ['interpolate', ['linear'], ['zoom'], 1, 1.2, 5, 2.4, 9, 4],
+  }},
+  {id: 'mm-zonas-relleno', type: 'fill', source: 'mm-zonas', paint: {
+    'fill-color': ['get', 'color'], 'fill-opacity': ['*', 0.18, ['get', 'op']]}},
+  {id: 'mm-zonas-borde', type: 'line', source: 'mm-zonas', filter: ['==', ['get', 'disc'], 1], paint: {
+    'line-color': ['get', 'color'], 'line-opacity': ['get', 'op'], 'line-width': 2.5, 'line-dasharray': [2, 1.5]}},
+  {id: 'mm-zonas-borde-continuo', type: 'line', source: 'mm-zonas', filter: ['==', ['get', 'disc'], 0], paint: {
+    'line-color': ['get', 'color'], 'line-opacity': ['get', 'op'], 'line-width': 2.5}},
+  {id: 'mm-rutas-sombra', type: 'line', source: 'mm-rutas', layout: {'line-cap': 'round', 'line-join': 'round'}, paint: {
+    'line-color': 'rgba(0,0,0,0.35)', 'line-width': ['+', ['get', 'grosor'], 3], 'line-blur': 3,
+    'line-opacity': ['get', 'op'], 'line-translate': [0, 2]}},
+  {id: 'mm-rutas', type: 'line', source: 'mm-rutas', filter: ['==', ['get', 'disc'], 0],
+    layout: {'line-cap': 'round', 'line-join': 'round'}, paint: {
+      'line-color': ['get', 'color'], 'line-width': ['get', 'grosor'], 'line-opacity': ['get', 'op']}},
+  {id: 'mm-rutas-disc', type: 'line', source: 'mm-rutas', filter: ['==', ['get', 'disc'], 1],
+    layout: {'line-cap': 'butt', 'line-join': 'round'}, paint: {
+      'line-color': ['get', 'color'], 'line-width': ['get', 'grosor'], 'line-opacity': ['get', 'op'],
+      'line-dasharray': [2, 1.4]}},
+  {id: 'mm-flechas', type: 'symbol', source: 'mm-flechas', layout: {
+    'icon-image': 'mm-flecha', 'icon-rotate': ['get', 'rumbo'], 'icon-rotation-alignment': 'map',
+    'icon-pitch-alignment': 'map', 'icon-size': ['/', ['get', 'grosor'], 7], 'icon-allow-overlap': true,
+    'icon-ignore-placement': true}, paint: {'icon-color': ['get', 'color'], 'icon-opacity': ['get', 'op']}},
+  {id: 'mm-pins-pulso', type: 'circle', source: 'mm-pins', filter: ['==', ['get', 'estilo'], 'pulso'], paint: {
+    'circle-color': ['get', 'color'], 'circle-radius': ['get', 'radioPulso'], 'circle-opacity': ['get', 'opPulso'],
+    'circle-pitch-alignment': 'map'}},
+  {id: 'mm-pins-punto', type: 'circle', source: 'mm-pins', paint: {
+    'circle-color': ['get', 'color'], 'circle-radius': ['*', ['get', 'escala'], ['match', ['get', 'estilo'], 'capital', 9, 8]],
+    'circle-opacity': ['get', 'op'], 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': ['*', ['get', 'escala'], 3],
+    'circle-stroke-opacity': ['get', 'op']}},
+];
+
+const capasEtiquetas = (id: EstiloId, c: Paleta, o: OpcionesEstilo): LayerSpecification[] => {
+  const capas: LayerSpecification[] = [];
+  if (id === 'calles') return capas;
+  if (o.mares) {
+    capas.push({id: 'mares', type: 'symbol', source: 'ne-mares', minzoom: 1.5,
+      filter: ['<=', ['coalesce', ['get', 'rank'], 9], 4],
+      layout: {'text-field': nombre(o), 'text-font': FUENTE_CURSIVA, 'symbol-placement': 'point',
+        'text-size': ['interpolate', ['linear'], ['zoom'], 2, 11, 6, 17], 'text-letter-spacing': 0.15,
+        'text-max-width': 8, 'symbol-sort-key': ['coalesce', ['get', 'rank'], 9]},
+      paint: {'text-color': c.mar, 'text-halo-color': 'rgba(0,0,0,0)'}});
+  }
+  if (o.etiquetasPaises) {
+    capas.push({id: 'paises-etiquetas', type: 'symbol', source: 'ne-etiquetas', layout: {
+      'text-field': ['upcase', nombre(o)], 'text-font': FUENTE_MEDIA,
+      'text-size': ['interpolate', ['linear'], ['zoom'], 1, ['-', 12, ['/', ['get', 'rank'], 2]], 4, ['-', 18, ['/', ['get', 'rank'], 2]], 7, 24],
+      'text-letter-spacing': 0.14, 'text-max-width': 7, 'symbol-sort-key': ['get', 'rank'],
+      'text-padding': 6},
+    paint: {'text-color': c.etiquetaPais, 'text-halo-color': c.haloPais, 'text-halo-width': 1.4, 'text-halo-blur': 0.5}});
+  }
+  if (o.ciudades) {
+    // Cada tramo de importancia entra a su zoom; los rangos no se solapan (si no, se duplican).
+    const capa = (sufijo: string, minzoom: number, minRank: number, maxRank: number): LayerSpecification[] => [
+      {id: `ciudades-punto-${sufijo}`, type: 'circle', source: 'ne-ciudades', minzoom,
+        filter: ['all', ['>=', ['get', 'rank'], minRank], ['<=', ['get', 'rank'], maxRank]],
+        paint: {'circle-color': c.ciudad, 'circle-radius': ['case', ['==', ['get', 'capital'], 1], 4.2, 3],
+          'circle-stroke-color': c.haloCiudad, 'circle-stroke-width': 1.2}},
+      {id: `ciudades-texto-${sufijo}`, type: 'symbol', source: 'ne-ciudades', minzoom,
+        filter: ['all', ['>=', ['get', 'rank'], minRank], ['<=', ['get', 'rank'], maxRank]],
+        layout: {'text-field': ['coalesce', nombre(o), ['get', 'nombre_local']], 'text-font': ['case', ['==', ['get', 'capital'], 1], ['literal', FUENTE_MEDIA], ['literal', FUENTE_REGULAR]],
+          'text-size': ['interpolate', ['linear'], ['zoom'], 3, 11, 8, 16], 'text-anchor': 'left',
+          'text-offset': [0.6, 0], 'symbol-sort-key': ['get', 'rank'], 'text-padding': 4,
+          'text-variable-anchor': ['left', 'right', 'top', 'bottom']},
+        paint: {'text-color': c.ciudadTexto, 'text-halo-color': c.haloCiudad, 'text-halo-width': 1.4}},
+    ];
+    capas.push(...capa('a', 2.5, 0, 1), ...capa('b', 4.2, 2, 4), ...capa('c', 6, 5, 7), ...capa('d', 8, 8, 10));
+  }
+  return capas;
+};
+
+/** Etiquetas de pines y textos libres: siempre arriba del todo. */
+const capasTextoProyecto = (): LayerSpecification[] => [
+  {id: 'mm-pins-papel', type: 'symbol', source: 'mm-pins', filter: ['==', ['get', 'etiqueta'], 'papel'], layout: {
+    'text-field': ['get', 'texto'], 'text-font': FUENTE_MEDIA, 'text-size': 20, 'text-letter-spacing': 0.06,
+    'text-anchor': 'bottom', 'text-offset': [0, -1.6], 'text-max-width': 30, 'text-allow-overlap': true, 'text-ignore-placement': true,
+    'icon-image': 'mm-papel', 'icon-text-fit': 'both', 'icon-text-fit-padding': [8, 14, 6, 14],
+    'icon-allow-overlap': true, 'icon-ignore-placement': true},
+  paint: {'text-color': '#1A1A17', 'text-opacity': ['get', 'op'], 'icon-opacity': ['get', 'op']}},
+  {id: 'mm-pins-halo', type: 'symbol', source: 'mm-pins', filter: ['==', ['get', 'etiqueta'], 'halo'], layout: {
+    'text-field': ['get', 'texto'], 'text-font': FUENTE_MEDIA, 'text-size': 20, 'text-letter-spacing': 0.06,
+    'text-anchor': 'bottom', 'text-offset': [0, -1.1], 'text-max-width': 30, 'text-allow-overlap': true, 'text-ignore-placement': true},
+  paint: {'text-color': '#FFFFFF', 'text-halo-color': 'rgba(0,0,0,0.8)', 'text-halo-width': 2, 'text-opacity': ['get', 'op']}},
+  {id: 'mm-textos', type: 'symbol', source: 'mm-textos', layout: {
+    'text-field': ['get', 'texto'],
+    'text-font': ['case', ['==', ['get', 'cursiva'], 1], ['literal', FUENTE_CURSIVA], ['literal', FUENTE_MEDIA]],
+    'text-size': ['get', 'tamano'], 'text-letter-spacing': ['get', 'espaciado'], 'text-max-width': 14,
+    'text-allow-overlap': true, 'text-ignore-placement': true, 'text-pitch-alignment': 'viewport'},
+  paint: {'text-color': ['get', 'color'], 'text-opacity': ['get', 'op'], 'text-halo-color': ['get', 'halo'],
+    'text-halo-width': 1.6}},
+  // Borrador mientras se dibuja una ruta.
+  {id: 'mm-borrador-linea', type: 'line', source: 'mm-borrador', paint: {
+    'line-color': '#FF5A36', 'line-width': 3, 'line-dasharray': [1, 1]}},
+  {id: 'mm-borrador-puntos', type: 'circle', source: 'mm-borrador', filter: ['==', ['geometry-type'], 'Point'], paint: {
+    'circle-color': '#FFFFFF', 'circle-radius': 5, 'circle-stroke-color': '#FF5A36', 'circle-stroke-width': 2}},
+];
+
+let estiloCallesCache: StyleSpecification | null = null;
+
+/** Construye el estilo completo. El mismo estilo se usa en el editor y en la exportación. */
+export const construirEstilo = async (id: EstiloId, o: OpcionesEstilo): Promise<StyleSpecification> => {
+  const c = PALETAS[id];
+  const sources: Record<string, SourceSpecification> = {...fuentesBase()};
+  if (o.relieve || o.terreno3d) Object.assign(sources, fuentesRelieve());
+  if (id === 'satelite') {
+    sources.sat = {type: 'raster', tiles: [FUENTES.satelite], tileSize: 256, maxzoom: 15, attribution: ATRIBUCION.satelite};
+  }
+
+  let capasCalles: LayerSpecification[] = [];
+  let glyphs = abs('fonts/') + '{fontstack}/{range}.pbf';
+  if (id === 'calles') {
+    if (!estiloCallesCache) {
+      const r = await fetch(FUENTES.calles);
+      if (!r.ok) throw new Error('No se pudo cargar el estilo de calles (OpenFreeMap).');
+      estiloCallesCache = (await r.json()) as StyleSpecification;
+    }
+    Object.assign(sources, estiloCallesCache.sources);
+    capasCalles = estiloCallesCache.layers;
+    // Las etiquetas de OpenFreeMap usan sus propias fuentes.
+    glyphs = estiloCallesCache.glyphs ?? glyphs;
+  }
+
+  const capas = [
+    ...capasCalles.filter((l) => l.type !== 'symbol'),
+    ...capasBase(id, c, o),
+    ...capasAnotacion(c),
+    ...capasCalles.filter((l) => l.type === 'symbol'),
+    ...capasEtiquetas(id, c, o),
+    ...capasTextoProyecto(),
+  ];
+
+  const estilo: StyleSpecification = {
+    version: 8,
+    glyphs,
+    sources,
+    layers: capas,
+    // Globo en vistas amplias y plano (Mercator) al acercarse: los mapas regionales se leen mejor planos.
+    projection: {type: o.globo ? ['interpolate', ['linear'], ['zoom'], 3.5, 'vertical-perspective', 5, 'mercator'] : 'mercator'},
+    sky: {
+      'sky-color': c.espacio,
+      'horizon-color': c.oceano,
+      'fog-color': c.espacio,
+      'sky-horizon-blend': 0.6,
+      'horizon-fog-blend': 0.6,
+      'fog-ground-blend': 0.8,
+      'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 0.8, 5, 0.6, 8, 0],
+    },
+  };
+  if (o.terreno3d) estilo.terrain = {source: 'dem-3d', exaggeration: o.exageracion};
+  if (id === 'calles' && !glyphs.includes('{fontstack}')) estilo.glyphs = abs('fonts/') + '{fontstack}/{range}.pbf';
+  return estilo;
+};

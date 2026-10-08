@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mapas multimedia</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='13' fill='%23FF5A36'/><path d='M6 14c5-4 9 3 14-1s6 2 6 2' stroke='white' stroke-width='2.5' fill='none'/></svg>" />
+</head>
+<body>
+  <header class="barra">
+    <div class="marca"><span class="logo"></span>Mapas multimedia</div>
+    <input id="nombre" class="nombre" spellcheck="false" />
+    <div class="grupo">
+      <button id="b-nuevo" title="Proyecto nuevo">Nuevo</button>
+      <button id="b-abrir" title="Abrir proyecto (.json)">Abrir</button>
+      <button id="b-guardar" title="Guardar proyecto (.json)">Guardar</button>
+      <button id="b-demo" title="Cargar el proyecto de ejemplo">Demo</button>
+      <input id="f-abrir" type="file" accept=".json,application/json" hidden />
+    </div>
+    <div class="grupo">
+      <label class="mini">Formato
+        <select id="formato">
+          <option value="1920x1080">16:9 · 1080p</option>
+          <option value="3840x2160">16:9 · 4K</option>
+          <option value="1080x1920">9:16 · Reel</option>
+          <option value="1080x1350">4:5 · Feed</option>
+          <option value="1080x1080">1:1</option>
+          <option value="1440x1080">4:3 · Inserto</option>
+        </select>
+      </label>
+      <label class="mini">FPS
+        <select id="fps"><option>24</option><option>25</option><option selected>30</option><option>50</option><option>60</option></select>
+      </label>
+    </div>
+    <div class="grupo derecha">
+      <button id="b-png" title="Capturar el fotograma actual a resolución final">Capturar PNG</button>
+      <button id="b-exportar" class="primario" title="Renderizar vídeo">Exportar vídeo</button>
+    </div>
+  </header>
+
+  <aside class="lateral izq">
+    <section>
+      <h3>Buscar lugar</h3>
+      <input id="buscar" placeholder="País, ciudad, mar…" autocomplete="off" />
+      <ul id="resultados" class="resultados"></ul>
+    </section>
+    <section>
+      <h3>Estilo</h3>
+      <div id="estilos" class="estilos"></div>
+      <div id="opciones" class="opciones"></div>
+    </section>
+    <section>
+      <h3>Herramientas</h3>
+      <div id="herramientas" class="herramientas"></div>
+      <p id="ayuda-herramienta" class="ayuda"></p>
+    </section>
+    <section class="crece">
+      <h3>Elementos</h3>
+      <ul id="lista" class="lista"></ul>
+    </section>
+  </aside>
+
+  <main class="escenario" id="escenario">
+    <div class="marco" id="marco">
+      <div id="mapa"></div>
+      <canvas id="overlay"></canvas>
+      <div class="guias" id="guias"></div>
+    </div>
+    <div class="hud" id="hud"></div>
+  </main>
+
+  <aside class="lateral der">
+    <section class="crece">
+      <h3 id="insp-titulo">Inspector</h3>
+      <div id="inspector" class="inspector"></div>
+    </section>
+    <section>
+      <h3>Proyecto</h3>
+      <label class="campo">Fuente en pantalla<input id="fuente" /></label>
+      <p class="ayuda" id="atribucion"></p>
+    </section>
+  </aside>
+
+  <footer class="linea">
+    <div class="controles">
+      <button id="b-inicio" title="Ir al inicio (Inicio)">⏮</button>
+      <button id="b-play" class="play" title="Reproducir / pausa (Espacio)">▶</button>
+      <span id="tiempo" class="tiempo">0:00.00</span>
+      <label class="mini">Duración (s)<input id="duracion" type="number" min="1" max="600" step="0.5" /></label>
+      <button id="b-kf" class="primario" title="Añadir keyframe de cámara con la vista actual (K)">◆ Keyframe</button>
+      <label class="mini chk"><input id="seguir" type="checkbox" checked /> Seguir cámara</label>
+      <span class="ayuda flex">Navega el mapa, pulsa <b>K</b> para fijar la cámara. Arrastra los rombos para mover keyframes.</span>
+    </div>
+    <div class="pistas" id="pistas">
+      <div class="regla" id="regla"></div>
+      <div class="filas" id="filas"></div>
+      <div class="cabezal" id="cabezal"></div>
+    </div>
+  </footer>
+
+  <div class="modal" id="modal" hidden>
+    <div class="caja">
+      <h2 id="modal-titulo">Exportando</h2>
+      <div class="barra-prog"><div id="modal-prog"></div></div>
+      <p id="modal-texto"></p>
+      <div class="acciones"><button id="modal-cancelar">Cancelar</button></div>
+    </div>
+  </div>
+  <div class="aviso" id="aviso"></div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

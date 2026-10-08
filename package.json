@@ -1,0 +1,22 @@
+{
+  "name": "mapas-multimedia",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Portal para navegar, diseñar y animar mapas con cámara por keyframes y exportar vídeo de alta calidad.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "datos": "python3 scripts/preparar-datos.py"
+  },
+  "dependencies": {
+    "maplibre-gl": "5.24.0",
+    "mediabunny": "1.61.3"
+  },
+  "devDependencies": {
+    "@types/geojson": "^7946.0.16",
+    "typescript": "5.9.3",
+    "vite": "6.4.4"
+  }
+}
