@@ -29,6 +29,12 @@ Atajos: `Espacio` reproducir · `K` keyframe · `←/→` fotograma (con `Shift`
 
 El proyecto se guarda solo en el navegador. **Guardar / Abrir** lo exporta e importa como `.mapa.json`, para versionarlo o compartirlo.
 
+## Estilo a medida (copiar una referencia)
+
+**Estilo → Importar estilo…** carga un JSON con paleta, colores de montaña por altitud, rótulos y opciones.
+El proceso completo para sacarlo de un vídeo de referencia (fotogramas, ficha técnica, JSON) está en
+[`referencias/README.md`](referencias/README.md); hay un ejemplo en `referencias/preset-ejemplo.json`.
+
 ## Datos y licencias
 
 | Capa | Fuente | Licencia |

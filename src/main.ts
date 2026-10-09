@@ -4,11 +4,11 @@ import maplibregl from 'maplibre-gl';
 import {buscar, ciudadCercana} from './buscador';
 import {ordenar, vistaEn} from './camara';
 import {aplicarElementos, borrador, olvidarEstado, registrarImagenes} from './capas';
-import {ATRIBUCION, construirEstilo, NOMBRES_ESTILO, PALETAS} from './estilos';
+import {ATRIBUCION, construirEstilo, NOMBRES_ESTILO, paletaDe, PALETAS} from './estilos';
 import {capturarPNG, exportarVideo} from './exportar';
 import {pintarOverlay} from './overlay';
 import {
-  type Elemento, type EstiloId, type Keyframe, type LonLat, normalizar, type OpcionesEstilo, type Proyecto,
+  type Elemento, type EstiloId, type Keyframe, type LonLat, normalizar, type OpcionesEstilo, type PresetEstilo, type Proyecto,
   proyectoDemo, proyectoNuevo, type TipoElemento, uid,
 } from './proyecto';
 
@@ -92,7 +92,7 @@ let estiloCargando = Promise.resolve();
 const recargarEstilo = () => {
   estiloCargando = (async () => {
     try {
-      const estilo = await construirEstilo(p.estilo, p.opciones);
+      const estilo = await construirEstilo(p.estilo, p.opciones, p.preset);
       olvidarEstado(map);
       map.setStyle(estilo, {diff: false});
       await new Promise<void>((ok) => map.once('style.load', () => ok()));
@@ -590,7 +590,40 @@ function renderEstilos() {
     });
     c.append(b);
   }
+  // Estilo a medida (preset JSON, p. ej. sacado de analizar un vídeo de referencia).
+  const fila = el('div', {className: 'preset'});
+  if (p.preset) {
+    fila.append(el('span', {textContent: `★ ${p.preset.nombre}`, title: p.preset.referencia ?? ''}),
+      boton('Quitar', () => {
+        cambio(() => (p.preset = null));
+        renderEstilos();
+        recargarEstilo();
+      }));
+  }
+  fila.append(boton('Importar estilo…', () => $('f-preset').click()));
+  c.append(fila);
 }
+
+$<HTMLInputElement>('f-preset').addEventListener('change', async (e) => {
+  const f = (e.target as HTMLInputElement).files?.[0];
+  (e.target as HTMLInputElement).value = '';
+  if (!f) return;
+  try {
+    const pr = JSON.parse(await f.text()) as PresetEstilo;
+    if (!pr.nombre || !pr.base || !(pr.base in NOMBRES_ESTILO)) throw new Error();
+    cambio(() => {
+      p.preset = pr;
+      p.estilo = pr.base;
+      Object.assign(p.opciones, pr.opciones ?? {});
+    });
+    renderEstilos();
+    renderOpciones();
+    recargarEstilo();
+    avisar(`Estilo aplicado: ${pr.nombre}`);
+  } catch {
+    avisar('Ese archivo no es un estilo válido (necesita "nombre" y "base").');
+  }
+});
 
 function renderOpciones() {
   const c = $('opciones');
@@ -684,7 +717,7 @@ function usarHerramienta(h: Herramienta) {
   renderHerramientas();
 }
 
-const acento = () => PALETAS[p.estilo].acento;
+const acento = () => paletaDe(p.estilo, p.preset).acento;
 
 type SinId<T> = T extends unknown ? Omit<T, 'id'> : never;
 function nuevo(e: SinId<Elemento>) {
@@ -720,7 +753,7 @@ map.on('click', async (ev) => {
       break;
     }
     case 'texto':
-      nuevo({tipo: 'texto', nombre: 'Texto', en, texto: 'Texto', tamano: 26, color: PALETAS[p.estilo].etiquetaPais, mayusculas: true, cursiva: false, espaciado: 0.2, desde: t0, hasta: null, fundido: 0.4});
+      nuevo({tipo: 'texto', nombre: 'Texto', en, texto: 'Texto', tamano: 26, color: paletaDe(p.estilo, p.preset).etiquetaPais, mayusculas: true, cursiva: false, espaciado: 0.2, desde: t0, hasta: null, fundido: 0.4});
       break;
     case 'zona':
       nuevo({tipo: 'zona', nombre: 'Zona', en, radioKm: 150, color: acento(), discontinua: true, desde: t0, hasta: null, fundido: 0.5});

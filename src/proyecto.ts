@@ -104,6 +104,23 @@ export type OpcionesEstilo = {
   idioma: 'es' | 'en';
 };
 
+/**
+ * Estilo a medida, normalmente sacado de analizar un vídeo de referencia
+ * (ver referencias/README.md). Se apoya en un estilo base y sobrescribe lo que trae.
+ */
+export type PresetEstilo = {
+  nombre: string;
+  base: EstiloId;
+  /** Vídeo o fuente de donde sale el estilo. */
+  referencia?: string;
+  /** Colores en hex por rol (oceano, tierra, frontera, acento, etiquetaPais…). */
+  paleta?: Record<string, string | number>;
+  /** Color por altitud: pares [metros, hex], de menor a mayor. */
+  rampaAltitud?: [number, string][];
+  rotulos?: {mayusculas?: boolean; espaciado?: number; escala?: number};
+  opciones?: Partial<OpcionesEstilo>;
+};
+
 export type Proyecto = {
   version: 1;
   nombre: string;
@@ -114,6 +131,7 @@ export type Proyecto = {
   estilo: EstiloId;
   opciones: OpcionesEstilo;
   fuente: string;
+  preset?: PresetEstilo | null;
   camara: Keyframe[];
   elementos: Elemento[];
 };

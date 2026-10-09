@@ -4,7 +4,7 @@ import type {
   SourceSpecification,
   StyleSpecification,
 } from 'maplibre-gl';
-import type {EstiloId, OpcionesEstilo} from './proyecto';
+import type {EstiloId, OpcionesEstilo, PresetEstilo} from './proyecto';
 
 // ── Fuentes externas (gratuitas, sin clave). Cada una con su atribución. ──────────
 export const FUENTES = {
@@ -119,6 +119,10 @@ export const NOMBRES_ESTILO: Record<EstiloId, string> = {
   calles: 'Calles (OSM)',
 };
 
+/** Paleta efectiva: la del estilo base con lo que sobrescriba el preset. */
+export const paletaDe = (id: EstiloId, preset?: PresetEstilo | null): Paleta =>
+  preset && preset.base === id ? ({...PALETAS[id], ...(preset.paleta ?? {})} as Paleta) : PALETAS[id];
+
 const abs = (ruta: string) => new URL(ruta, document.baseURI).href;
 
 export const FUENTE_MEDIA = ['Noto Sans Medium'];
@@ -161,7 +165,7 @@ const RAMPA_ALTITUD: [number, string][] = [
 ];
 
 /** Capas cartográficas del mapa base (debajo de las anotaciones). */
-const capasBase = (id: EstiloId, c: Paleta, o: OpcionesEstilo): LayerSpecification[] => {
+const capasBase = (id: EstiloId, c: Paleta, o: OpcionesEstilo, rampa: [number, string][]): LayerSpecification[] => {
   const capas: LayerSpecification[] = [];
   const esVectorPropio = id !== 'calles';
 
@@ -174,7 +178,7 @@ const capasBase = (id: EstiloId, c: Paleta, o: OpcionesEstilo): LayerSpecificati
       capas.push({id: 'tierra', type: 'fill', source: 'ne-paises', paint: {'fill-color': c.tierra}});
       capas.push({id: 'altitud', type: 'color-relief', source: 'dem-sombra', paint: {
         'color-relief-color': ['interpolate', ['linear'], ['elevation'],
-          ...RAMPA_ALTITUD.flatMap(([m, col]) => [m, col])] as unknown as ExpressionSpecification,
+          ...rampa.flatMap(([m, col]) => [m, col])] as unknown as ExpressionSpecification,
         'color-relief-opacity': 1,
       }} as LayerSpecification);
     } else {
@@ -270,7 +274,7 @@ const capasAnotacion = (c: Paleta): LayerSpecification[] => [
     'circle-stroke-opacity': ['get', 'op']}},
 ];
 
-const capasEtiquetas = (id: EstiloId, c: Paleta, o: OpcionesEstilo): LayerSpecification[] => {
+const capasEtiquetas = (id: EstiloId, c: Paleta, o: OpcionesEstilo, rot: NonNullable<PresetEstilo['rotulos']> = {}): LayerSpecification[] => {
   const capas: LayerSpecification[] = [];
   if (id === 'calles') return capas;
   if (o.mares) {
@@ -280,16 +284,6 @@ const capasEtiquetas = (id: EstiloId, c: Paleta, o: OpcionesEstilo): LayerSpecif
         'text-size': ['interpolate', ['linear'], ['zoom'], 2, 11, 6, 17], 'text-letter-spacing': 0.15,
         'text-max-width': 8, 'symbol-sort-key': ['coalesce', ['get', 'rank'], 9]},
       paint: {'text-color': c.mar, 'text-halo-color': 'rgba(0,0,0,0)'}});
-  }
-  if (o.etiquetasPaises) {
-    // Fuera bases militares, glaciares y territorios diminutos (min_label ≥ 6 en Natural Earth).
-    capas.push({id: 'paises-etiquetas', type: 'symbol', source: 'ne-etiquetas',
-      filter: ['<', ['coalesce', ['get', 'min_label'], 5], 6], layout: {
-      'text-field': ['upcase', nombre(o)], 'text-font': FUENTE_MEDIA,
-      'text-size': ['interpolate', ['linear'], ['zoom'], 1, ['-', 12, ['/', ['get', 'rank'], 2]], 4, ['-', 18, ['/', ['get', 'rank'], 2]], 7, 24],
-      'text-letter-spacing': 0.14, 'text-max-width': 7, 'symbol-sort-key': ['coalesce', ['get', 'min_label'], 5],
-      'text-padding': 6},
-    paint: {'text-color': c.etiquetaPais, 'text-halo-color': c.haloPais, 'text-halo-width': 1.4, 'text-halo-blur': 0.5}});
   }
   if (o.ciudades) {
     // Cada tramo de importancia entra a su zoom; los rangos no se solapan (si no, se duplican).
@@ -307,6 +301,21 @@ const capasEtiquetas = (id: EstiloId, c: Paleta, o: OpcionesEstilo): LayerSpecif
         paint: {'text-color': c.ciudadTexto, 'text-halo-color': c.haloCiudad, 'text-halo-width': 1.4}},
     ];
     capas.push(...capa('a', 2.5, 0, 1), ...capa('b', 4.2, 2, 4), ...capa('c', 6, 5, 7), ...capa('d', 8, 8, 10));
+  }
+  // Los países van después: las capas de arriba se colocan primero y ganan las colisiones.
+  if (o.etiquetasPaises) {
+    // Fuera bases militares, glaciares y territorios diminutos (min_label ≥ 6 en Natural Earth).
+    capas.push({id: 'paises-etiquetas', type: 'symbol', source: 'ne-etiquetas',
+      filter: ['<', ['coalesce', ['get', 'min_label'], 5], 6], layout: {
+      'text-field': rot.mayusculas === false ? nombre(o) : ['upcase', nombre(o)], 'text-font': FUENTE_MEDIA,
+      // La escala va dentro de cada parada: "zoom" solo puede ir en el interpolate de primer nivel.
+      'text-size': ['interpolate', ['linear'], ['zoom'],
+        1, ['*', rot.escala ?? 1, ['-', 12, ['/', ['get', 'rank'], 2]]],
+        4, ['*', rot.escala ?? 1, ['-', 18, ['/', ['get', 'rank'], 2]]],
+        7, 24 * (rot.escala ?? 1)],
+      'text-letter-spacing': rot.espaciado ?? 0.14, 'text-max-width': 7, 'symbol-sort-key': ['coalesce', ['get', 'min_label'], 5],
+      'text-padding': 6},
+    paint: {'text-color': c.etiquetaPais, 'text-halo-color': c.haloPais, 'text-halo-width': 1.4, 'text-halo-blur': 0.5}});
   }
   return capas;
 };
@@ -340,8 +349,10 @@ const capasTextoProyecto = (): LayerSpecification[] => [
 let estiloCallesCache: StyleSpecification | null = null;
 
 /** Construye el estilo completo. El mismo estilo se usa en el editor y en la exportación. */
-export const construirEstilo = async (id: EstiloId, o: OpcionesEstilo): Promise<StyleSpecification> => {
-  const c = PALETAS[id];
+export const construirEstilo = async (id: EstiloId, o: OpcionesEstilo, preset?: PresetEstilo | null): Promise<StyleSpecification> => {
+  const c = paletaDe(id, preset);
+  const propio = preset && preset.base === id ? preset : null;
+  const rampa = propio?.rampaAltitud?.length ? propio.rampaAltitud : RAMPA_ALTITUD;
   const sources: Record<string, SourceSpecification> = {...fuentesBase()};
   if (o.relieve || o.terreno3d || id === 'realista') Object.assign(sources, fuentesRelieve());
   if (id === 'satelite') {
@@ -364,10 +375,10 @@ export const construirEstilo = async (id: EstiloId, o: OpcionesEstilo): Promise<
 
   const capas = [
     ...capasCalles.filter((l) => l.type !== 'symbol'),
-    ...capasBase(id, c, o),
+    ...capasBase(id, c, o, rampa),
     ...capasAnotacion(c),
     ...capasCalles.filter((l) => l.type === 'symbol'),
-    ...capasEtiquetas(id, c, o),
+    ...capasEtiquetas(id, c, o, propio?.rotulos),
     ...capasTextoProyecto(),
   ];
 

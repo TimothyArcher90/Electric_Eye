@@ -10,7 +10,7 @@ import {
 } from 'mediabunny';
 import {vistaEn} from './camara';
 import {aplicarElementos, registrarImagenes} from './capas';
-import {construirEstilo, PALETAS} from './estilos';
+import {construirEstilo, paletaDe} from './estilos';
 import {pintarOverlay} from './overlay';
 import type {Proyecto} from './proyecto';
 
@@ -43,7 +43,7 @@ class Renderizador {
   }
 
   async iniciar() {
-    const estilo = await construirEstilo(this.p.estilo, this.p.opciones);
+    const estilo = await construirEstilo(this.p.estilo, this.p.opciones, this.p.preset);
     this.map = new maplibregl.Map({
       container: this.cont,
       style: estilo,
@@ -72,7 +72,7 @@ class Renderizador {
     aplicarElementos(this.map, this.p, t);
     await this.esperarListo();
     const {ctx, lienzo} = this;
-    ctx.fillStyle = PALETAS[this.p.estilo].espacio;
+    ctx.fillStyle = paletaDe(this.p.estilo, this.p.preset).espacio;
     ctx.fillRect(0, 0, lienzo.width, lienzo.height);
     ctx.drawImage(this.map.getCanvas(), 0, 0, lienzo.width, lienzo.height);
     pintarOverlay(ctx, lienzo.width, lienzo.height, this.p, t);

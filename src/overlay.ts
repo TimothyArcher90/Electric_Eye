@@ -1,5 +1,5 @@
 import {visibilidad} from './geo';
-import {PALETAS} from './estilos';
+import {paletaDe} from './estilos';
 import type {ElemTitulo, Proyecto} from './proyecto';
 
 // Capa 2D encima del mapa: títulos, fuente, grano de película y viñeta.
@@ -27,7 +27,7 @@ const texturaRuido = () => {
 const SANS = '"Inter", "Helvetica Neue", Arial, sans-serif';
 
 export const pintarOverlay = (ctx: CanvasRenderingContext2D, w: number, h: number, p: Proyecto, t: number) => {
-  const pal = PALETAS[p.estilo];
+  const pal = paletaDe(p.estilo, p.preset);
   const u = h / 1080; // unidad relativa: todo escala con la altura del fotograma
 
   // Viñeta

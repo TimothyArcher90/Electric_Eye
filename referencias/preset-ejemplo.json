@@ -1,0 +1,21 @@
+{
+  "nombre": "Ejemplo — relieve oscuro",
+  "base": "realista",
+  "referencia": "Plantilla. Sustituir por los valores medidos en la ficha de la referencia.",
+  "paleta": {
+    "espacio": "#05080D",
+    "oceano": "#16324A",
+    "frontera": "#F4EFE3",
+    "etiquetaPais": "#FFFFFF",
+    "haloPais": "rgba(8,12,18,0.8)",
+    "ciudad": "#F2C230",
+    "acento": "#E0402B",
+    "intensidadRelieve": 0.8
+  },
+  "rampaAltitud": [
+    [-6000, "#0B1E30"], [-200, "#1D4466"], [0, "#56704A"], [600, "#86905E"],
+    [1500, "#A88C66"], [3000, "#8E7B6A"], [4800, "#CFC8BF"], [6000, "#FFFFFF"]
+  ],
+  "rotulos": {"mayusculas": true, "espaciado": 0.2, "escala": 1.1},
+  "opciones": {"relieve": true, "globo": true, "grano": 0.25, "vineta": 0.5}
+}
