@@ -12,6 +12,12 @@ nada más. También puede dirigirse desde la app de escritorio de Claude o desde
 Le dices qué quieres contar; Claude monta la pieza, la mira y la corrige, y exporta el vídeo. También puedes editar a
 mano cuando quieras.
 
+**El render va en segundo plano** ("encargar y olvidar"): Electric Eye abre un navegador oculto (Edge o Chrome del
+ordenador) y hace el vídeo ahí, así que puedes seguir trabajando, cambiar de pestaña o cerrarla. La barra superior
+muestra el avance y, al terminar, **Abrir carpeta**. Cada render pasa un **control de calidad**: se mide el cambio entre
+fotogramas y se avisa si hay saltos o parpadeos. El editor se recarga solo cuando hay una versión nueva (la versión se
+ve arriba, junto a ● Claude).
+
 ```
 Tú (chat de Claude) ──► conector MCP "electric-eye" ──► puente local :5175 ──► editor en el navegador :5174
                                                                               └─► salidas/  (MP4, PNG, proyectos)

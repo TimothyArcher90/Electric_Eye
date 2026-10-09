@@ -22,6 +22,8 @@ y entregas una pieza que se lea a la primera. Estilo por defecto: **atlas** (atl
 Por defecto el mapa solo rotula los países que intervienen (`pais` y `territorio`); ciudades y mares del mapa base no
 salen. Lo que el espectador debe leer lo pones tú: `pin` para ciudades clave, `texto` para mares o regiones. Pocas
 palabras y solo lo que cuenta la pieza. Si un país sale solo de contexto y no hace falta nombrarlo, no lo añadas.
+El nombre de cada país se coloca en su centro: si en el encuadre solo se ve una parte del país (China vista desde
+Taiwán), su nombre puede quedar fuera. Si debe leerse, añade un `texto` con el nombre en la zona visible.
 
 ## Lenguaje visual (medido en la referencia)
 
@@ -35,14 +37,17 @@ palabras y solo lo que cuenta la pieza. Si un país sale solo de contexto y no h
 - Un protagonista por plano. El segundo color entra después, cuando el primero ya está asentado.
 - Los países se resaltan enteros (`pais`). Si un bando gana terreno, usa `territorio` (frente): `direccion` es hacia
   dónde avanza (0 = norte, 90 = este, 180 = sur, 270 = oeste) y `hasta_fraccion` cuánto cubre.
-- Fichas (`ficha`): hexágonos de pie. `icono` es un emoji que se pinta como silueta: 🪖 tropas, ✈️ aviación, 🚢 flota,
-  🚀 misiles, 💥 ataque, ⚓ base naval, ☢️ nuclear, 🛢️ petróleo, 🏭 industria, ⭐ mando. Línea de frente = 4–10 fichas
+- Fichas (`ficha`): hexágonos de pie con silueta propia. `icono` por nombre: `soldado`, `tanque`, `barco`,
+  `submarino`, `avion`, `helicoptero`, `dron`, `misil`, `explosion`, `ancla` (base naval), `nuclear`, `petroleo`,
+  `fabrica`, `mando`, `satelite`. (Los emojis de antes también valen: 🪖 ✈️ 🚢 🚀 💥 ⚓ ☢️ 🛢️ 🏭 ⭐.) Línea de frente = 4–10 fichas
   alineadas, separadas ~0,6–1° y con `desde` escalonado 0,15 s.
   Con un frente (`territorio`), pon las fichas de cada bando a ambos lados del borde del frente (≈0,6–0,8° a cada
   lado), en columna, nunca mezcladas ni encima. A zoom ≥ 5 usa `tamano` 0,7 para que no se tapen.
 - Objetivos: `zona` con `estilo: "objetivo"` (anillos rojos que laten, radioKm 25–60). Alcance: `estilo: "radar"`.
   Sobre una ciudad que ya tiene rótulo en el mapa (capitales, grandes ciudades) no pongas además un `pin` con el
   mismo nombre: saldría dos veces. Usa solo la zona objetivo, o un pin con un texto distinto ("OBJETIVO").
+- Ataques y ofensivas: `ruta` con `"estilo": "ataque"` y `anchoKm` (30–120): flecha gruesa que se ensancha y avanza,
+  como en los documentales. Es lo más vistoso para un avance militar o un bloqueo; 1–3 por plano.
 - Rutas: `ruta` con `lugares` o `puntos`; discontinuas para rutas marítimas o de suministro y continuas para ataques.
   Una ruta marítima nunca cruza tierra: si rodea una isla o costa, añade puntos intermedios en el mar.
   `trazo` 1,5–3 s.
@@ -59,6 +64,8 @@ palabras y solo lo que cuenta la pieza. Si un país sale solo de contexto y no h
 - Ritmo: una toma cada 3–6 s; la cámara llega **antes** de que aparezca el elemento (0,3–0,8 s).
 - `vuelo: true` solo para saltos largos entre regiones.
 - Deriva lenta entre tomas cercanas (mismo centro, +0,3 de zoom): da vida sin marear.
+- Las tomas con curva `suave` forman una sola trayectoria continua (la cámara no se para en cada una). Para un
+  movimiento de cine bastan 3–5 tomas bien separadas; si quieres una pausa real, repite la misma toma dos veces.
 - Velocidad máxima: unos 0,6 niveles de zoom por segundo. Un acercamiento de 3 → 6 necesita ≥ 5 s. Más rápido se ve
   como un salto (lo detectó el análisis fotograma a fotograma). `poner_camara` avisa si te pasas: corrígelo.
 

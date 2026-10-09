@@ -144,6 +144,14 @@ export const iniciarChat = () => {
     }
   });
 
+  // Sugerencias de un clic: rellenan el cuadro para editar o enviar.
+  lista.addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest('button[data-texto]') as HTMLButtonElement | null;
+    if (!b) return;
+    texto.value = b.dataset.texto ?? '';
+    texto.focus();
+  });
+
   $('chat-form').addEventListener('submit', (e) => {
     e.preventDefault();
     void mandar();

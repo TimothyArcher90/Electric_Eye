@@ -21,6 +21,8 @@ const INSTRUCCIONES = [
   'El usuario ve el editor a la vez que el chat: responde en español, breve y claro, sin jerga técnica.',
   'Al terminar una pieza dile que pulse ▶ (o la barra espaciadora) para verla animada, y pregunta si la exportas.',
   'Mapas siempre atractivos: estilo atlas salvo que pida otro, un protagonista por plano, cámara inclinada que se mueve.',
+  'Solo lo que cuenta la historia: nada de rótulos o detalles que no se pidan. Para ofensivas usa rutas estilo "ataque".',
+  'El render va en segundo plano: el usuario puede cerrar la pestaña. Al terminar revisa calidad.saltos y corrige si hay.',
 ].join(' ');
 
 const INSTRUCCIONES_ARCHIVO = join(dirname(CONFIG_MCP), 'instrucciones.txt');
