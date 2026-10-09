@@ -268,7 +268,21 @@ servidor.registerTool('poner_camara', {
   });
   p.duracion = Math.max(p.duracion, ...p.camara.map((k) => k.t));
   await cargar(p);
-  return texto({keyframes: p.camara.length, duracion: p.duracion});
+  // Movimientos bruscos: más de ~0,6 niveles de zoom por segundo (o giros de más de 15°/s) se ven como un salto.
+  const orden = [...p.camara].sort((a, b) => a.t - b.t);
+  const avisos = [];
+  for (let i = 1; i < orden.length; i++) {
+    const a = orden[i - 1];
+    const b = orden[i];
+    const dt = Math.max(0.01, b.t - a.t);
+    const dz = Math.abs(b.zoom - a.zoom);
+    const dr = Math.abs(((b.rumbo - a.rumbo + 540) % 360) - 180);
+    if (!b.vuelo && (dz / dt > 0.6 || dr / dt > 15)) {
+      avisos.push(`Entre ${a.t}s y ${b.t}s la cámara va demasiado rápida (zoom ${dz.toFixed(1)} en ${dt.toFixed(1)} s): ` +
+        `separa más las tomas (≥ ${Math.ceil(dz / 0.6)} s) o reduce el cambio de zoom.`);
+    }
+  }
+  return texto({keyframes: p.camara.length, duracion: p.duracion, ...(avisos.length ? {avisos} : {})});
 });
 
 servidor.registerTool('anadir_elementos', {

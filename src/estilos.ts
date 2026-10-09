@@ -256,6 +256,9 @@ const capasBase = (id: EstiloId, c: Paleta, o: OpcionesEstilo, rampa: [number, s
       'hillshade-highlight-color': c.luz,
       'hillshade-accent-color': c.sombra,
       'hillshade-illumination-direction': 315,
+      // La luz se ancla al mapa, no a la pantalla: si no, al girar la cámara las sombras del relieve
+      // y del fondo marino se desplazan y parece que el fondo "se mueve".
+      'hillshade-illumination-anchor': 'map',
     }});
   }
 
@@ -361,7 +364,8 @@ const capasEtiquetas = (id: EstiloId, c: Paleta, o: OpcionesEstilo, rot: NonNull
     ];
     // El atlas es sobrio: solo capitales y grandes ciudades, como en la referencia.
     if (atlas) capas.push(...capa('a', 2.5, 0, 1), ...capa('b', 5, 2, 3));
-    else capas.push(...capa('a', 2.5, 0, 1), ...capa('b', 4.2, 2, 4), ...capa('c', 6, 5, 7), ...capa('d', 8, 8, 10));
+    // Los demás estilos, igual de contenidos: al acercarse, las ciudades pequeñas (Zhongli, Hsinchu…) tapaban el objetivo.
+    else capas.push(...capa('a', 2.5, 0, 1), ...capa('b', 4.5, 2, 3), ...capa('c', 7, 4, 5));
   }
   // Los países van después: las capas de arriba se colocan primero y ganan las colisiones.
   if (o.etiquetasPaises) {

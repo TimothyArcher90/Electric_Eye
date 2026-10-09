@@ -31,7 +31,10 @@ y entregas una pieza que se lea a la primera. Estilo por defecto: **atlas** (atl
   Con un frente (`territorio`), pon las fichas de cada bando a ambos lados del borde del frente (≈0,6–0,8° a cada
   lado), en columna, nunca mezcladas ni encima. A zoom ≥ 5 usa `tamano` 0,7 para que no se tapen.
 - Objetivos: `zona` con `estilo: "objetivo"` (anillos rojos que laten, radioKm 25–60). Alcance: `estilo: "radar"`.
+  Sobre una ciudad que ya tiene rótulo en el mapa (capitales, grandes ciudades) no pongas además un `pin` con el
+  mismo nombre: saldría dos veces. Usa solo la zona objetivo, o un pin con un texto distinto ("OBJETIVO").
 - Rutas: `ruta` con `lugares` o `puntos`; discontinuas para rutas marítimas o de suministro y continuas para ataques.
+  Una ruta marítima nunca cruza tierra: si rodea una isla o costa, añade puntos intermedios en el mar.
   `trazo` 1,5–3 s.
 - Cifras: `columna` (3D) sobre la capital o el lugar del dato; altura proporcional entre columnas; `texto` con la cifra.
   Escala real: a zoom 5–6 usa 40–200 km de altura y 15–40 km de radio; a zoom 3–4, hasta 600 km. Requiere
@@ -46,6 +49,8 @@ y entregas una pieza que se lea a la primera. Estilo por defecto: **atlas** (atl
 - Ritmo: una toma cada 3–6 s; la cámara llega **antes** de que aparezca el elemento (0,3–0,8 s).
 - `vuelo: true` solo para saltos largos entre regiones.
 - Deriva lenta entre tomas cercanas (mismo centro, +0,3 de zoom): da vida sin marear.
+- Velocidad máxima: unos 0,6 niveles de zoom por segundo. Un acercamiento de 3 → 6 necesita ≥ 5 s. Más rápido se ve
+  como un salto (lo detectó el análisis fotograma a fotograma). `poner_camara` avisa si te pasas: corrígelo.
 
 ## Horizontal y Reel
 
