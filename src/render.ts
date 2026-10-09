@@ -9,7 +9,7 @@ import {subirArchivo} from './puente';
 declare global {
   interface Window {
     eeProgreso?: (hecho: number, total: number, fase: string) => void;
-    eeRender?: (p: Proyecto, anchoCss: number, vista: Vista | null, nombre: string) => Promise<{ruta: string; codec: string; mb: number}>;
+    eeRender?: (p: Proyecto, anchoCss: number, vista: Vista | null, nombre: string) => Promise<{ruta: string; codec: string; mb: number; calidad: unknown}>;
     eeCancelar?: boolean;
   }
 }
@@ -17,5 +17,5 @@ declare global {
 window.eeRender = async (p, anchoCss, vista, nombre) => {
   const r = await exportarVideo(p, anchoCss, (h, t, f) => window.eeProgreso?.(h, t, f), () => Boolean(window.eeCancelar), vista);
   const ruta = await subirArchivo(r.blob, `${nombre}.${r.extension.replace(/^\./, '')}`);
-  return {ruta, codec: r.codec, mb: +(r.blob.size / 1e6).toFixed(1)};
+  return {ruta, codec: r.codec, mb: +(r.blob.size / 1e6).toFixed(1), calidad: r.calidad};
 };

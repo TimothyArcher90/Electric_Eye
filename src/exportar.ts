@@ -11,7 +11,7 @@ import {
 import {desfaseZoom, type Vista, vistaEn} from './camara';
 import {aplicarElementos, precargarGeometrias, precargarImagenes, registrarImagenes} from './capas';
 import {construirEstilo, paletaDe} from './estilos';
-import {componerMapa, pintarOverlay} from './overlay';
+import {cargarFuentes, componerMapa, pintarOverlay} from './overlay';
 import type {Proyecto} from './proyecto';
 
 export type Progreso = (hecho: number, total: number, fase: string) => void;
@@ -43,7 +43,7 @@ class Renderizador {
   }
 
   async iniciar() {
-    await Promise.all([precargarImagenes(this.p), precargarGeometrias()]);
+    await Promise.all([precargarImagenes(this.p), precargarGeometrias(), cargarFuentes()]);
     const estilo = await construirEstilo(this.p.estilo, this.p.opciones, this.p.preset);
     this.map = new maplibregl.Map({
       container: this.cont,
@@ -119,6 +119,22 @@ class Renderizador {
   }
 }
 
+/** Saltos: fotogramas cuyo cambio supera 3 veces la mediana y un mínimo absoluto. Se agrupan los seguidos. */
+export const analizarCambios = (cambios: number[], fps: number) => {
+  const orden = [...cambios].sort((a, b) => a - b);
+  const mediana = orden[Math.floor(orden.length / 2)] ?? 0;
+  const umbral = Math.max(mediana * 3, 6);
+  const saltos: {t: number; intensidad: number}[] = [];
+  cambios.forEach((v, i) => {
+    if (v <= umbral) return;
+    const t = +((i + 1) / fps).toFixed(2);
+    const ultimo = saltos.at(-1);
+    if (ultimo && t - ultimo.t < 0.5) ultimo.intensidad = Math.max(ultimo.intensidad, +(v / Math.max(mediana, 0.5)).toFixed(1));
+    else saltos.push({t, intensidad: +(v / Math.max(mediana, 0.5)).toFixed(1)});
+  });
+  return {movimientoMedio: +mediana.toFixed(2), saltos};
+};
+
 export const capturarPNG = async (p: Proyecto, t: number, anchoCss: number, vista: Vista | null = null): Promise<Blob> => {
   const r = new Renderizador(p, anchoCss, vista);
   try {
@@ -132,7 +148,7 @@ export const capturarPNG = async (p: Proyecto, t: number, anchoCss: number, vist
 
 export const exportarVideo = async (
   p: Proyecto, anchoCss: number, progreso: Progreso, cancelado: () => boolean, vista: Vista | null = null,
-): Promise<{blob: Blob; extension: string; codec: string}> => {
+): Promise<{blob: Blob; extension: string; codec: string; calidad: ReturnType<typeof analizarCambios>}> => {
   const r = new Renderizador(p, anchoCss, vista);
   try {
     progreso(0, 1, 'Cargando mapa');
@@ -152,6 +168,14 @@ export const exportarVideo = async (
     await output.start();
 
     const total = Math.max(1, Math.round(p.duracion * p.fps));
+    // Control de calidad: cada fotograma se reduce a 64 px de ancho y se compara con el anterior. Un cambio
+    // mucho mayor que lo normal (salto de cámara, parpadeo, tesela que aparece de golpe) queda anotado.
+    const mini = document.createElement('canvas');
+    mini.width = 64;
+    mini.height = Math.max(1, Math.round((64 * p.alto) / p.ancho));
+    const mctx = mini.getContext('2d', {willReadFrequently: true})!;
+    let previo: Uint8ClampedArray | null = null;
+    const cambios: number[] = [];
     for (let i = 0; i < total; i++) {
       if (cancelado()) {
         await output.cancel();
@@ -160,6 +184,14 @@ export const exportarVideo = async (
       const t = i / p.fps;
       const a = performance.now();
       await r.fotograma(t);
+      mctx.drawImage(r.lienzo, 0, 0, mini.width, mini.height);
+      const px = mctx.getImageData(0, 0, mini.width, mini.height).data;
+      if (previo) {
+        let suma = 0;
+        for (let k = 0; k < px.length; k += 4) suma += Math.abs(px[k] - previo[k]) + Math.abs(px[k + 1] - previo[k + 1]) + Math.abs(px[k + 2] - previo[k + 2]);
+        cambios.push(suma / (px.length / 4) / 3);
+      }
+      previo = px.slice();
       const b = performance.now();
       await fuente.add(t, 1 / p.fps);
       console.debug(`[exportar] f${i} render ${(b - a).toFixed(0)} ms · codificar ${(performance.now() - b).toFixed(0)} ms`);
@@ -168,7 +200,8 @@ export const exportarVideo = async (
     progreso(total, total, 'Cerrando archivo');
     await output.finalize();
     const buf = (output.target as BufferTarget).buffer!;
-    return {blob: new Blob([buf], {type: formato.mimeType}), extension: formato.fileExtension, codec};
+    return {blob: new Blob([buf], {type: formato.mimeType}), extension: formato.fileExtension, codec,
+      calidad: analizarCambios(cambios, p.fps)};
   } finally {
     r.destruir();
   }

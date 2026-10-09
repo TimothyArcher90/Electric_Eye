@@ -7,7 +7,14 @@ import type {Proyecto} from './proyecto';
 export type Trabajo = {
   id: string; fase: string; hecho: number; total: number; ruta: string | null; error: string | null;
   inicio: number; segundos: number; mb?: number; codec?: string; formato?: string;
+  calidad?: {movimientoMedio: number; saltos: {t: number; intensidad: number}[]};
 };
+
+/** Resumen del control de calidad en una línea. */
+export const textoCalidad = (c?: Trabajo['calidad']) => !c ? ''
+  : c.saltos.length === 0 ? 'Control de calidad: sin saltos ni parpadeos ✓'
+  : `Control de calidad: ${c.saltos.length} posible${c.saltos.length > 1 ? 's' : ''} salto${c.saltos.length > 1 ? 's' : ''} en ` +
+    c.saltos.map((x) => `${x.t.toFixed(1).replace('.', ',')} s`).join(', ');
 
 /** Para el chat y el conector: renderizando | listo | error (como la exportación de antes). */
 export const faseSimple = (f: string) => (f === 'listo' ? 'listo' : f === 'error' || f === 'cancelado' ? 'error' : 'renderizando');
@@ -32,7 +39,8 @@ const reloj = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60))
 export const seguirVideo = (id: string, avisar: (texto: string) => void) => {
   const pastilla = document.getElementById('render-estado') as HTMLDivElement;
   const evento = (t: Trabajo) => window.dispatchEvent(new CustomEvent('ee-exportacion', {detail: {
-    fase: faseSimple(t.fase), inicio: t.inicio, segundos: t.segundos, ruta: t.ruta, mb: t.mb, error: t.error}}));
+    fase: faseSimple(t.fase), inicio: t.inicio, segundos: t.segundos, ruta: t.ruta, mb: t.mb, error: t.error,
+    calidad: textoCalidad(t.calidad)}}));
   let primero = true;
   const tic = async () => {
     const t = await estadoVideo(id).catch(() => null);
@@ -54,7 +62,8 @@ export const seguirVideo = (id: string, avisar: (texto: string) => void) => {
     evento(t);
     if (t.fase === 'listo') {
       pastilla.className = 'render-estado listo';
-      pastilla.innerHTML = `✅ Vídeo listo en ${reloj(t.segundos)} · ${t.mb ?? '?'} MB <button data-accion="carpeta">Abrir carpeta</button>` +
+      pastilla.title = textoCalidad(t.calidad);
+      pastilla.innerHTML = `${t.calidad?.saltos.length ? '⚠️' : '✅'} Vídeo listo en ${reloj(t.segundos)} · ${t.mb ?? '?'} MB <button data-accion="carpeta">Abrir carpeta</button>` +
         ` <button data-accion="cerrar" title="Ocultar">✕</button>`;
       avisar(`Vídeo guardado: ${t.ruta}`);
     } else {

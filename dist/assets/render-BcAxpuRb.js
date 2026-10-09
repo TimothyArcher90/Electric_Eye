@@ -1,1 +1,0 @@
-import{e as s,s as d}from"./puente-uUh-wt2E.js";window.eeRender=async(o,r,a,i)=>{const e=await s(o,r,(n,t,c)=>window.eeProgreso?.(n,t,c),()=>!!window.eeCancelar,a);return{ruta:await d(e.blob,`${i}.${e.extension.replace(/^\./,"")}`),codec:e.codec,mb:+(e.blob.size/1e6).toFixed(1)}};

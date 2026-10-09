@@ -1,6 +1,7 @@
 import type {FilterSpecification, GeoJSONSource, Map as MapLibre} from 'maplibre-gl';
 import polygonClipping, {type MultiPolygon, type Polygon as PolyClip} from 'polygon-clipping';
-import {circulo, densificar, recortar, rumboFinal, visibilidad} from './geo';
+import {circulo, densificar, flechaGruesa, recortar, rumboFinal, visibilidad} from './geo';
+import {silueta} from './iconos';
 import type {ElemPin, Elemento, Proyecto} from './proyecto';
 
 // ── Imágenes subidas (retratos de fichas, logo) ────────────────────────────────────
@@ -126,8 +127,18 @@ const dibujarFicha = (id: string) => {
       const k = Math.max(132 / img.width, 132 / img.height);
       c.drawImage(img, cx - (img.width * k) / 2, cy - (img.height * k) / 2, img.width * k, img.height * k);
       c.restore();
+    } else if (icono && silueta(icono)) {
+      // Silueta propia (src/iconos.ts), en tinta oscura como las fichas de la referencia.
+      c.save();
+      c.translate(cx - 50, cy - 50 + 2);
+      c.translate(50, 50);
+      c.scale(1.02, 1.02);
+      c.translate(-50, -50);
+      c.fillStyle = fondo === 'blanco' ? '#1C2B45' : '#121212';
+      c.fill(silueta(icono)!);
+      c.restore();
     } else if (icono) {
-      // El icono se pinta como silueta (tinta oscura), como las fichas de la referencia.
+      // Emoji o texto sin silueta propia: se pinta como silueta (tinta oscura).
       const t = document.createElement('canvas');
       t.width = W;
       t.height = H;
@@ -241,6 +252,7 @@ export const aplicarElementos = (map: MapLibre, p: Proyecto, t: number, opts: {s
   const textos: GeoJSON.Feature[] = [];
   const territorios: GeoJSON.Feature[] = [];
   const columnas: GeoJSON.Feature[] = [];
+  const ataques: GeoJSON.Feature[] = [];
   const estadoPaises = new Map<string, {color: string; op: number; opBorde: number}>();
 
   for (const e of p.elementos as Elemento[]) {
@@ -263,6 +275,12 @@ export const aplicarElementos = (map: MapLibre, p: Proyecto, t: number, opts: {s
         // Curva de dibujo: arranca rápido y frena al llegar, como un trazo a mano.
         const linea = recortar(densa, 1 - Math.pow(1 - prog, 2.2));
         if (linea.length < 2) break;
+        if (e.estilo === 'ataque') {
+          const anillo = flechaGruesa(linea, e.anchoKm ?? 60);
+          if (anillo.length > 3) ataques.push({type: 'Feature', properties: {color: e.color, op},
+            geometry: {type: 'Polygon', coordinates: [anillo]}});
+          break;
+        }
         const props = {color: e.color, grosor: e.grosor, op, disc: e.discontinua ? 1 : 0};
         rutas.push({type: 'Feature', properties: props, geometry: {type: 'LineString', coordinates: linea}});
         if (e.flecha) {
@@ -346,6 +364,7 @@ export const aplicarElementos = (map: MapLibre, p: Proyecto, t: number, opts: {s
   fijar(map, 'mm-flechas', fc(flechas));
   fijar(map, 'mm-pins', fc(pins));
   fijar(map, 'mm-textos', fc(textos));
+  if (map.getSource('mm-ataques')) fijar(map, 'mm-ataques', fc(ataques));
   rotulosDeLaHistoria(map, p);
   fijar(map, 'mm-territorios', fc(territorios));
   fijar(map, 'mm-columnas', fc(columnas));

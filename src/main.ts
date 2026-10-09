@@ -6,7 +6,7 @@ import {desfaseZoom, ordenar, vistaEn} from './camara';
 import {aplicarElementos, borrador, olvidarEstado, precargarGeometrias, precargarImagenes, registrarImagenes} from './capas';
 import {ATRIBUCION, BANDOS, construirEstilo, NOMBRES_ESTILO, paletaDe, PALETAS} from './estilos';
 import {capturarPNG, diagnosticar, exportarVideo} from './exportar';
-import {aplicarOpticaPrevia, pintarOverlay} from './overlay';
+import {aplicarOpticaPrevia, cargarFuentes, pintarOverlay} from './overlay';
 import {iniciarChat} from './chat';
 import {encargarVideo, estadoVideo, faseSimple, seguirVideo} from './encargos';
 import {vigilarVersion} from './version';
@@ -1199,6 +1199,7 @@ const trabajo: {fase: string; hecho: number; total: number; ruta: string | null;
   codec?: string; mb?: number; segundos?: number} = {fase: 'sin trabajo', hecho: 0, total: 0, ruta: null, error: null, inicio: 0};
 
 iniciarChat();
+void cargarFuentes().then(() => pintarPrevia());
 // Si al abrir (o recargar) el editor hay un render en marcha, se sigue mostrando su avance.
 void estadoVideo().then((t) => {
   if (t && faseSimple(t.fase) === 'renderizando') seguirVideo(t.id, avisar);

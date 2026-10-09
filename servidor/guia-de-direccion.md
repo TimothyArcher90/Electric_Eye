@@ -13,6 +13,9 @@ y entregas una pieza que se lea a la primera. Estilo por defecto: **atlas** (atl
    el encuadre centrado en la acción? Corrige con `editar_elemento` o `poner_camara` y vuelve a mirar.
 6. `exportar_video` solo cuando la vista previa esté bien. Se renderiza en segundo plano: dile al usuario que puede
    seguir trabajando o cerrar la pestaña, y al terminar dale la ruta del archivo.
+7. Control de calidad: al terminar, `estado_exportacion` trae `calidad.saltos` (momentos con un cambio brusco entre
+   fotogramas). Si hay alguno, mira ese segundo con `vista_previa`, corrige la causa (casi siempre una toma de cámara
+   demasiado rápida) y exporta otra vez. Una pieza no está terminada con saltos.
 
 ## Rótulos: solo la historia
 

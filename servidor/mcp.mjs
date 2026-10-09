@@ -134,7 +134,8 @@ const completar = (e) => {
       if (puntos.length < 2) throw new Error('Una ruta necesita al menos dos puntos o lugares.');
       return {...base, tipo: 'ruta', nombre: e.nombre ?? 'Ruta', puntos, color: color(e.color, BANDOS.bloque), grosor: e.grosor ?? 4,
         discontinua: e.discontinua ?? true, flecha: e.flecha ?? true, forma: e.forma ?? (puntos.length === 2 ? 'arco' : 'recta'),
-        trazo: e.trazo ?? 2, fundido: e.fundido ?? 0.2};
+        trazo: e.trazo ?? 2, fundido: e.fundido ?? 0.2, estilo: e.estilo === 'ataque' ? 'ataque' : 'linea',
+        ...(e.estilo === 'ataque' ? {anchoKm: e.anchoKm ?? 60} : {})};
     }
     case 'texto':
       return {...base, tipo: 'texto', nombre: e.nombre ?? 'Texto', en: coords(e), texto: e.texto ?? '', tamano: e.tamano ?? 26,

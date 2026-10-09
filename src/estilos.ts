@@ -165,6 +165,7 @@ const fuentesBase = (): Record<string, SourceSpecification> => ({
   'mm-zonas': {type: 'geojson', data: {type: 'FeatureCollection', features: []}},
   'mm-rutas': {type: 'geojson', data: {type: 'FeatureCollection', features: []}, lineMetrics: true},
   'mm-flechas': {type: 'geojson', data: {type: 'FeatureCollection', features: []}},
+  'mm-ataques': {type: 'geojson', data: {type: 'FeatureCollection', features: []}},
   'mm-pins': {type: 'geojson', data: {type: 'FeatureCollection', features: []}},
   'mm-textos': {type: 'geojson', data: {type: 'FeatureCollection', features: []}},
   'mm-borrador': {type: 'geojson', data: {type: 'FeatureCollection', features: []}},
@@ -175,7 +176,7 @@ const fuentesBase = (): Record<string, SourceSpecification> => ({
 const fuentesRelieve = (): Record<string, SourceSpecification> => ({
   // Relieve suave y estable: con más detalle, al acercar la cámara el sombreado cambia de nivel cada pocos
   // fotogramas y la tierra parece que "hierve". Con nivel 6 el dibujo es el mismo de principio a fin.
-  'dem-sombra': {type: 'raster-dem', tiles: [FUENTES.terreno], encoding: 'terrarium', tileSize: 256, maxzoom: 6,
+  'dem-sombra': {type: 'raster-dem', tiles: [FUENTES.terreno], encoding: 'terrarium', tileSize: 256, maxzoom: 5,
     attribution: ATRIBUCION.terreno},
   'dem-3d': {type: 'raster-dem', tiles: [FUENTES.terreno], encoding: 'terrarium', tileSize: 256, maxzoom: 13},
 });
@@ -254,7 +255,9 @@ const capasBase = (id: EstiloId, c: Paleta, o: OpcionesEstilo, rampa: [number, s
 
   if (o.relieve || id === 'realista' || id === 'atlas') {
     capas.push({id: 'relieve', type: 'hillshade', source: 'dem-sombra', paint: {
-      'hillshade-method': id === 'realista' ? 'multidirectional' : id === 'atlas' ? 'igor' : 'standard',
+      // 'igor' resalta las montañas y deja lisas las llanuras: sin la textura de "arena ondulada" que, con la
+      // cámara en movimiento, hacía que la tierra pareciera moverse. Solo el estilo Realista conserva todo el detalle.
+      'hillshade-method': id === 'realista' ? 'multidirectional' : 'igor',
       'hillshade-exaggeration': c.intensidadRelieve,
       'hillshade-shadow-color': c.sombra,
       'hillshade-highlight-color': c.luz,
@@ -322,6 +325,13 @@ const capasAnotacion = (c: Paleta): LayerSpecification[] => [
     layout: {'line-cap': 'butt', 'line-join': 'round'}, paint: {
       'line-color': ['get', 'color'], 'line-width': ['get', 'grosor'], 'line-opacity': ['get', 'op'],
       'line-dasharray': [2, 1.4]}},
+  // Flechas de ataque gruesas: sombra suave, relleno y filo claro.
+  {id: 'mm-ataques-sombra', type: 'line', source: 'mm-ataques', paint: {
+    'line-color': '#000000', 'line-width': 10, 'line-blur': 10, 'line-opacity': ['*', 0.28, ['get', 'op']], 'line-translate': [4, 6]}},
+  {id: 'mm-ataques', type: 'fill', source: 'mm-ataques', paint: {
+    'fill-color': ['get', 'color'], 'fill-opacity': ['*', 0.93, ['get', 'op']]}},
+  {id: 'mm-ataques-filo', type: 'line', source: 'mm-ataques', paint: {
+    'line-color': '#FFFFFF', 'line-width': 1.6, 'line-opacity': ['*', 0.75, ['get', 'op']]}},
   {id: 'mm-flechas', type: 'symbol', source: 'mm-flechas', layout: {
     'icon-image': 'mm-flecha', 'icon-rotate': ['get', 'rumbo'], 'icon-rotation-alignment': 'map',
     'icon-pitch-alignment': 'map', 'icon-size': ['/', ['get', 'grosor'], 7], 'icon-allow-overlap': true,

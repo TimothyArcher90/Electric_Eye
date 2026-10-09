@@ -82,6 +82,20 @@ export const aplicarOpticaPrevia = (marco: HTMLElement, o: OpcionesEstilo) => {
 };
 
 const SANS = '"Inter", "Helvetica Neue", Arial, sans-serif';
+// Titulares de documental: Oswald (condensada). Las dos fuentes viajan con Electric Eye (public/fuentes, licencia
+// OFL), así el vídeo sale igual en cualquier ordenador y no cae en Arial.
+const TITULAR = '"Oswald", "Bebas Neue", Impact, sans-serif';
+
+let fuentes: Promise<unknown> | null = null;
+/** Carga Inter y Oswald una vez. Hay que esperarla antes de pintar el primer fotograma. */
+export const cargarFuentes = () => {
+  if (fuentes || typeof FontFace === 'undefined') return fuentes ?? Promise.resolve();
+  const base = new URL('fuentes/', document.baseURI).href;
+  const caras = [new FontFace('Inter', `url(${base}Inter.ttf)`, {weight: '100 900'}),
+    new FontFace('Oswald', `url(${base}Oswald.ttf)`, {weight: '200 700'})];
+  fuentes = Promise.all(caras.map((f) => f.load().then((c) => document.fonts.add(c)).catch(() => undefined)));
+  return fuentes;
+};
 
 export const pintarOverlay = (ctx: CanvasRenderingContext2D, w: number, h: number, p: Proyecto, t: number) => {
   const pal = paletaDe(p.estilo, p.preset);
@@ -120,7 +134,7 @@ export const pintarOverlay = (ctx: CanvasRenderingContext2D, w: number, h: numbe
   for (const e of p.elementos) {
     if (e.tipo !== 'titulo' || e.oculto) continue;
     const op = visibilidad(t, e.desde, e.hasta, e.fundido);
-    if (op > 0) pintarTitulo(ctx, w, h, u, e, op, p.estilo === 'documental' || p.estilo === 'minimal');
+    if (op > 0) pintarTitulo(ctx, w, h, u, e, op, p.estilo === 'documental' || p.estilo === 'minimal', pal.acento);
   }
 
   // Marca de agua (logo) abajo a la izquierda; con logo, la fuente pasa a la derecha.
@@ -160,7 +174,7 @@ export const pintarOverlay = (ctx: CanvasRenderingContext2D, w: number, h: numbe
 };
 
 const pintarTitulo = (
-  ctx: CanvasRenderingContext2D, w: number, h: number, u: number, e: ElemTitulo, op: number, papel: boolean,
+  ctx: CanvasRenderingContext2D, w: number, h: number, u: number, e: ElemTitulo, op: number, papel: boolean, acento: string,
 ) => {
   const entrada = Math.min(1, op);
   const desliz = (1 - entrada) * 24 * u;
@@ -172,8 +186,8 @@ const pintarTitulo = (
   const texto = e.texto.toUpperCase();
   const pad = 26 * u;
   const medir = () => {
-    ctx.font = `800 ${tam}px ${SANS}`;
-    ctx.letterSpacing = `${1 * u}px`;
+    ctx.font = `600 ${tam}px ${TITULAR}`;
+    ctx.letterSpacing = `${3 * u}px`;
     const a = ctx.measureText(texto).width;
     ctx.font = `500 ${tamSub}px ${SANS}`;
     ctx.letterSpacing = '0px';
@@ -208,8 +222,12 @@ const pintarTitulo = (
   ctx.fillStyle = papel ? '#1A1A17' : '#FFFFFF';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
-  ctx.font = `800 ${tam}px ${SANS}`;
-  ctx.letterSpacing = `${1 * u}px`;
+  // Barra de acento bajo la caja, en el color de la pieza (como los rótulos de documental).
+  ctx.fillStyle = acento;
+  ctx.fillRect(x, y + altoCaja - 6 * u, anchoCaja, 6 * u);
+  ctx.fillStyle = papel ? '#1A1A17' : '#FFFFFF';
+  ctx.font = `600 ${tam}px ${TITULAR}`;
+  ctx.letterSpacing = `${3 * u}px`;
   ctx.fillText(texto, w / 2, y + pad * 0.7);
   if (e.subtitulo) {
     ctx.font = `500 ${tamSub}px ${SANS}`;

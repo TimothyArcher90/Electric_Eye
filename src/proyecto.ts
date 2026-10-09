@@ -46,6 +46,10 @@ export type ElemRuta = Base & {
   forma: 'geodesica' | 'arco' | 'recta';
   /** Segundos que tarda en dibujarse. 0 = aparece entera. */
   trazo: number;
+  /** 'linea' (por defecto) o 'ataque': flecha gruesa que se ensancha y avanza, como en los documentales. */
+  estilo?: 'linea' | 'ataque';
+  /** Ancho de la flecha de ataque, en km. */
+  anchoKm?: number;
 };
 
 export type ElemPin = Base & {

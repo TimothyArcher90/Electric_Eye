@@ -127,3 +127,52 @@ export const visibilidad = (t: number, desde: number, hasta: number | null, fund
   const sale = hasta == null ? 1 : Math.min(1, Math.max(0, (hasta + f - t) / f));
   return t < desde ? 0 : Math.min(entra, sale);
 };
+
+/**
+ * Flecha de ataque gruesa (como en los documentales): cuerpo que se ensancha desde la cola y punta afilada.
+ * Devuelve el contorno del polígono. anchoKm es el ancho del cuerpo; la punta mide 2,2 veces el ancho.
+ */
+export const flechaGruesa = (linea: LonLat[], anchoKm: number): LonLat[] => {
+  if (linea.length < 2) return [];
+  const m = linea.map(aMerc);
+  const latMedia = rad(linea.reduce((s, p) => s + p[1], 0) / linea.length);
+  const W = anchoKm / 6371 / Math.cos(latMedia); // ancho en unidades Mercator
+  const acum = [0];
+  for (let i = 1; i < m.length; i++) acum.push(acum[i - 1] + Math.hypot(m[i][0] - m[i - 1][0], m[i][1] - m[i - 1][1]));
+  const total = acum[acum.length - 1];
+  if (total <= 0) return [];
+  const largoPunta = Math.min(W * 2.4, total * 0.45);
+  const finCuerpo = total - largoPunta;
+  // Punto y dirección a una distancia s del inicio.
+  const en = (s: number): {p: [number, number]; d: [number, number]} => {
+    let i = 1;
+    while (i < m.length - 1 && acum[i] < s) i++;
+    const a = m[i - 1];
+    const b = m[i];
+    const l = Math.max(1e-12, acum[i] - acum[i - 1]);
+    const f = Math.min(1, Math.max(0, (s - acum[i - 1]) / l));
+    return {p: [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f], d: [(b[0] - a[0]) / l, (b[1] - a[1]) / l]};
+  };
+  const izq: [number, number][] = [];
+  const der: [number, number][] = [];
+  const pasos = 40;
+  for (let k = 0; k <= pasos; k++) {
+    const s = (finCuerpo * k) / pasos;
+    const {p, d} = en(s);
+    const w = (W / 2) * (0.45 + 0.55 * Math.min(1, s / Math.max(1e-9, finCuerpo) * 1.4)); // cola fina que se abre
+    izq.push([p[0] - d[1] * w, p[1] + d[0] * w]);
+    der.push([p[0] + d[1] * w, p[1] - d[0] * w]);
+  }
+  const base = en(finCuerpo);
+  const punta = m[m.length - 1];
+  const hw = W * 1.1;
+  const anillo: [number, number][] = [
+    ...izq,
+    [base.p[0] - base.d[1] * hw, base.p[1] + base.d[0] * hw],
+    punta,
+    [base.p[0] + base.d[1] * hw, base.p[1] - base.d[0] * hw],
+    ...der.reverse(),
+  ];
+  anillo.push(anillo[0]);
+  return anillo.map(deMerc);
+};

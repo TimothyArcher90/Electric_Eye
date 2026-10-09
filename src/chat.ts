@@ -125,7 +125,7 @@ export const iniciarChat = () => {
   // Tiempo de render: el editor avisa al empezar y al terminar cada exportación.
   let render: {nodo: HTMLDivElement; tic: number; inicio: number} | null = null;
   window.addEventListener('ee-exportacion', (e) => {
-    const d = (e as CustomEvent).detail as {fase: string; inicio: number; segundos?: number; ruta?: string; mb?: number; error?: string};
+    const d = (e as CustomEvent).detail as {fase: string; inicio: number; segundos?: number; ruta?: string; mb?: number; error?: string; calidad?: string};
     if (d.fase === 'renderizando' && !render) {
       const nodo = añadir('estado render', '');
       const pintar = () => (nodo.textContent = `🎬 Renderizando… ${reloj((Date.now() - d.inicio) / 1000)}`);
@@ -138,7 +138,7 @@ export const iniciarChat = () => {
       window.clearInterval(r.tic);
       const seg = d.segundos ?? (Date.now() - r.inicio) / 1000;
       r.nodo.textContent = d.fase === 'listo'
-        ? `🎬 Render: ${reloj(seg)}${d.mb ? `  ·  ${d.mb} MB` : ''}${d.ruta ? `\n📁 ${d.ruta}` : ''}`
+        ? `🎬 Render: ${reloj(seg)}${d.mb ? `  ·  ${d.mb} MB` : ''}${d.ruta ? `\n📁 ${d.ruta}` : ''}${d.calidad ? `\n🔎 ${d.calidad}` : ''}`
         : `🎬 El render falló tras ${reloj(seg)}: ${d.error ?? ''}`;
       render = null;
     }

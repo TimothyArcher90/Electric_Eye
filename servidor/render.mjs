@@ -45,7 +45,7 @@ const abrirNavegador = async () => {
 };
 
 const publico = (t) => {
-  const {cancelar: _c, ...resto} = t;
+  const {cancelar: _c, proyecto: _p, ...resto} = t; // sin el proyecto entero: la respuesta debe ser ligera
   return {...resto, segundos: Math.round(((t.fin ?? Date.now()) - t.inicio) / 1000)};
 };
 
@@ -70,7 +70,7 @@ const ejecutar = async (t) => {
     t.cancelar = async () => pag.evaluate(() => (window.eeCancelar = true)).catch(() => undefined);
     const r = await pag.evaluate(([p, ancho, vista, nombre]) => window.eeRender(p, ancho, vista, nombre),
       [t.proyecto, t.anchoCss, t.vista, t.nombre]);
-    Object.assign(t, {fase: 'listo', ruta: r.ruta, codec: r.codec, mb: r.mb});
+    Object.assign(t, {fase: 'listo', ruta: r.ruta, codec: r.codec, mb: r.mb, calidad: r.calidad});
     console.log(`  Vídeo listo en ${Math.round((Date.now() - t.inicio) / 1000)} s: ${r.ruta}`);
   } catch (e) {
     t.fase = t.cancelado ? 'cancelado' : 'error';
