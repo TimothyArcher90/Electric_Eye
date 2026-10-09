@@ -6,7 +6,8 @@ import {dirname, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const git = (args) => execSync(`git ${args}`, {cwd: RAIZ, stdio: ['ignore', 'pipe', 'pipe'], timeout: 60000}).toString().trim();
+// safe.directory: en discos sin dueño de archivos (FAT/exFAT, como suele ser D:) git se niega a trabajar sin él.
+const git = (args) => execSync(`git -c safe.directory="${RAIZ.replace(/\\/g, "/")}" ${args}`, {cwd: RAIZ, stdio: ['ignore', 'pipe', 'pipe'], timeout: 60000}).toString().trim();
 
 try {
   if (!existsSync(join(RAIZ, '.git'))) throw new Error('sin repositorio');
