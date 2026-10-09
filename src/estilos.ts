@@ -173,7 +173,9 @@ const fuentesBase = (): Record<string, SourceSpecification> => ({
 });
 
 const fuentesRelieve = (): Record<string, SourceSpecification> => ({
-  'dem-sombra': {type: 'raster-dem', tiles: [FUENTES.terreno], encoding: 'terrarium', tileSize: 256, maxzoom: 13,
+  // Relieve suave y estable: con más detalle, al acercar la cámara el sombreado cambia de nivel cada pocos
+  // fotogramas y la tierra parece que "hierve". Con nivel 6 el dibujo es el mismo de principio a fin.
+  'dem-sombra': {type: 'raster-dem', tiles: [FUENTES.terreno], encoding: 'terrarium', tileSize: 256, maxzoom: 6,
     attribution: ATRIBUCION.terreno},
   'dem-3d': {type: 'raster-dem', tiles: [FUENTES.terreno], encoding: 'terrarium', tileSize: 256, maxzoom: 13},
 });

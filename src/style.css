@@ -203,3 +203,17 @@ body.con-chat .lateral.der { visibility: hidden; }
   font-size: 12px; font-variant-numeric: tabular-nums; padding: 6px 10px; }
 .chat-msg.estado.render { border-style: solid; color: var(--texto); background: var(--panel2); }
 .version { font-size: 10.5px; color: var(--tenue); margin-left: 8px; font-variant-numeric: tabular-nums; }
+
+/* ── Render en segundo plano (barra superior) ───────────────────────────────── */
+.render-estado {
+  position: relative; overflow: hidden; display: flex; align-items: center; gap: 8px; white-space: nowrap;
+  font-size: 12px; font-variant-numeric: tabular-nums; padding: 5px 10px; border-radius: 99px;
+  border: 1px solid var(--borde); background: var(--panel2);
+}
+.render-estado[hidden] { display: none; }
+.render-estado .render-barra { position: absolute; inset: 0; width: var(--p); background: color-mix(in srgb, var(--acento) 18%, transparent); z-index: -0; pointer-events: none; }
+.render-estado button { padding: 1px 7px; font-size: 11px; position: relative; }
+.render-estado.listo { border-color: #9CCB9F; background: #EEF7EE; color: #2E6B3A; }
+.render-estado.error { border-color: #E8B9A8; background: #F9E3DC; color: #8A2E14; }
+:root[data-tema="oscuro"] .render-estado.listo { background: #16301C; color: #9FE0AE; border-color: #2E5A38; }
+:root[data-tema="oscuro"] .render-estado.error { background: #3A1E17; color: #FFB8A3; border-color: #5C2C20; }

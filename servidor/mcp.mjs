@@ -340,7 +340,7 @@ servidor.registerTool('exportar_png', {
 });
 
 servidor.registerTool('exportar_video', {
-  title: 'Exportar vídeo', description: 'Lanza el render del vídeo completo (fotograma a fotograma) y responde al momento. Consulta el avance con estado_exportacion hasta que la fase sea "listo"; entonces da al usuario la ruta del archivo.',
+  title: 'Exportar vídeo', description: 'Lanza el render del vídeo completo en segundo plano (navegador oculto: el usuario puede cerrar la pestaña) y responde al momento. Consulta el avance con estado_exportacion hasta que la fase sea "listo"; entonces da al usuario la ruta del archivo.',
 }, async () => texto(await orden('exportar_video')));
 
 servidor.registerTool('estado_exportacion', {

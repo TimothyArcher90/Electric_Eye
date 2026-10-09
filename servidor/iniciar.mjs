@@ -6,6 +6,7 @@ import {createReadStream, existsSync, statSync} from 'node:fs';
 import {createServer} from 'node:http';
 import {extname, join, normalize, sep} from 'node:path';
 import {manejarChat, reiniciarChat} from './chat.mjs';
+import {cancelarRender, encargarRender, estadoRender} from './render.mjs';
 import {iniciarPuente, puenteActivo, PUERTO} from './puente.mjs';
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -96,6 +97,38 @@ const web = createServer((req, res) => {
   if (ruta === '/api/chat/nuevo' && req.method === 'POST') {
     reiniciarChat();
     return res.writeHead(204).end();
+  }
+  // Render en segundo plano (servidor/render.mjs).
+  const json = (codigo, datos) => res.writeHead(codigo, {'Content-Type': 'application/json; charset=utf-8'}).end(JSON.stringify(datos));
+  const leer = () => new Promise((ok) => {
+    let cuerpo = '';
+    req.on('data', (t) => (cuerpo += t));
+    req.on('end', () => {
+      try {
+        ok(JSON.parse(cuerpo || '{}'));
+      } catch {
+        ok({});
+      }
+    });
+  });
+  if (ruta === '/api/render' && req.method === 'POST') {
+    void leer().then((d) => (d.proyecto ? json(200, encargarRender(d)) : json(400, {error: 'Falta el proyecto'})));
+    return;
+  }
+  if (ruta === '/api/render/estado') return json(200, estadoRender(new URL(req.url, url).searchParams.get('id')) ?? {fase: 'ninguno'});
+  if (ruta === '/api/render/cancelar' && req.method === 'POST') {
+    void leer().then(async (d) => json(200, (await cancelarRender(d.id)) ?? {fase: 'ninguno'}));
+    return;
+  }
+  if (ruta === '/api/abrir-salidas' && req.method === 'POST') {
+    // Abre la carpeta de los vídeos en el explorador de archivos.
+    void fetch(`http://127.0.0.1:${PUERTO}/salud`).then((r) => r.json()).then(({salidas}) => {
+      const [cmd, args] = process.platform === 'win32' ? ['explorer', [salidas]]
+        : process.platform === 'darwin' ? ['open', [salidas]] : ['xdg-open', [salidas]];
+      spawn(cmd, args, {stdio: 'ignore', detached: true}).on('error', () => undefined).unref();
+      json(200, {salidas});
+    }, () => json(500, {error: 'No encuentro la carpeta de salidas'}));
+    return;
   }
   let archivo = normalize(join(DIST, ruta.endsWith('/') ? `${ruta}index.html` : ruta));
   if (!archivo.startsWith(DIST + sep) && archivo !== DIST) archivo = join(DIST, 'index.html');

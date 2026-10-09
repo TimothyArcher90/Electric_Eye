@@ -1,4 +1,4 @@
-import type {GeoJSONSource, Map as MapLibre} from 'maplibre-gl';
+import type {FilterSpecification, GeoJSONSource, Map as MapLibre} from 'maplibre-gl';
 import polygonClipping, {type MultiPolygon, type Polygon as PolyClip} from 'polygon-clipping';
 import {circulo, densificar, recortar, rumboFinal, visibilidad} from './geo';
 import type {ElemPin, Elemento, Proyecto} from './proyecto';
@@ -201,6 +201,37 @@ const fijar = (map: MapLibre, fuente: string, datos: FC) => {
   s?.setData(datos);
 };
 
+// ── Solo los rótulos de la historia ────────────────────────────────────────────────
+// Un mapa limpio, como en los documentales: el nombre de los países que intervienen y nada más. Las ciudades y
+// mares del mapa base se ocultan; los lugares que importan los nombra la pieza (pins, textos, zonas).
+const filtroOriginal = new WeakMap<object, {orig: unknown; clave: string}>();
+const rotulosDeLaHistoria = (map: MapLibre, p: Proyecto) => {
+  const activo = p.opciones.soloHistoria !== false;
+  const isos = [...new Set(p.elementos
+    .filter((e) => !e.oculto && (e.tipo === 'pais' || e.tipo === 'territorio'))
+    .map((e) => (e as {iso: string}).iso))].sort();
+  const capa = map.getLayer('paises-etiquetas');
+  if (capa) {
+    let reg = filtroOriginal.get(capa);
+    if (!reg) {
+      reg = {orig: map.getFilter('paises-etiquetas'), clave: ''};
+      filtroOriginal.set(capa, reg);
+    }
+    const clave = activo ? isos.join(',') : '*';
+    if (reg.clave !== clave) {
+      reg.clave = clave;
+      map.setFilter('paises-etiquetas', (activo
+        ? ['all', reg.orig ?? true, ['in', ['get', 'iso'], ['literal', isos]]]
+        : reg.orig) as FilterSpecification);
+    }
+  }
+  for (const l of map.getStyle().layers) {
+    if (!/^(ciudades-|mares$)/.test(l.id)) continue;
+    const vis = activo ? 'none' : 'visible';
+    if (map.getLayoutProperty(l.id, 'visibility') !== vis) map.setLayoutProperty(l.id, 'visibility', vis);
+  }
+};
+
 export const aplicarElementos = (map: MapLibre, p: Proyecto, t: number, opts: {seleccion?: string | null} = {}) => {
   if (!map.isStyleLoaded() && !map.getSource('mm-rutas')) return;
   const zonas: GeoJSON.Feature[] = [];
@@ -315,6 +346,7 @@ export const aplicarElementos = (map: MapLibre, p: Proyecto, t: number, opts: {s
   fijar(map, 'mm-flechas', fc(flechas));
   fijar(map, 'mm-pins', fc(pins));
   fijar(map, 'mm-textos', fc(textos));
+  rotulosDeLaHistoria(map, p);
   fijar(map, 'mm-territorios', fc(territorios));
   fijar(map, 'mm-columnas', fc(columnas));
 

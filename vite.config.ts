@@ -7,7 +7,11 @@ const COMPILACION = new Date().toISOString().slice(0, 16).replace('T', ' ');
 export default defineConfig({
   base: './',
   define: {__COMPILACION__: JSON.stringify(COMPILACION)},
-  build: {target: 'es2022', chunkSizeWarningLimit: 2000},
+  build: {
+    target: 'es2022', chunkSizeWarningLimit: 2000,
+    // Dos páginas: el editor y la del render en segundo plano (sin interfaz).
+    rollupOptions: {input: {editor: 'index.html', render: 'render.html'}},
+  },
   plugins: [{
     name: 'version',
     generateBundle() {

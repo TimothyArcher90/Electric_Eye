@@ -8,6 +8,7 @@ import {ATRIBUCION, BANDOS, construirEstilo, NOMBRES_ESTILO, paletaDe, PALETAS} 
 import {capturarPNG, diagnosticar, exportarVideo} from './exportar';
 import {aplicarOpticaPrevia, pintarOverlay} from './overlay';
 import {iniciarChat} from './chat';
+import {encargarVideo, estadoVideo, faseSimple, seguirVideo} from './encargos';
 import {vigilarVersion} from './version';
 import {iniciarPuente, subirArchivo} from './puente';
 import {
@@ -771,6 +772,7 @@ function renderOpciones() {
     chk('Terreno 3D', 'terreno3d'),
     chk('Colorear países', 'colorearPaises'),
     chk('Nombres de países', 'etiquetasPaises'),
+    chk('Solo rótulos de la historia', 'soloHistoria'),
     chk('Ciudades', 'ciudades'),
     chk('Ríos', 'rios'),
     chk('Mares', 'mares'),
@@ -1067,6 +1069,15 @@ $('modal-cancelar').addEventListener('click', () => (cancelar = true));
 $('b-exportar').addEventListener('click', async () => {
   if (reproduciendo) alternarPlay();
   await estiloCargando;
+  // Lo normal: render en segundo plano (navegador oculto). Se puede seguir trabajando o cerrar la pestaña.
+  try {
+    const job = await encargarVideo(structuredClone(p), anchoMarco(), vistaActualCamara());
+    seguirVideo(job.id, avisar);
+    avisar('Render encargado: se hace en segundo plano y se guarda solo en la carpeta de salidas.');
+    return;
+  } catch {
+    /* servidor antiguo o sin navegador: se exporta aquí, como antes */
+  }
   cancelar = false;
   modal.hidden = false;
   $('modal-titulo').textContent = `Exportando ${p.ancho}×${p.alto} · ${p.fps} fps`;
@@ -1188,6 +1199,10 @@ const trabajo: {fase: string; hecho: number; total: number; ruta: string | null;
   codec?: string; mb?: number; segundos?: number} = {fase: 'sin trabajo', hecho: 0, total: 0, ruta: null, error: null, inicio: 0};
 
 iniciarChat();
+// Si al abrir (o recargar) el editor hay un render en marcha, se sigue mostrando su avance.
+void estadoVideo().then((t) => {
+  if (t && faseSimple(t.fase) === 'renderizando') seguirVideo(t.id, avisar);
+}).catch(() => undefined);
 vigilarVersion(() => trabajo.fase === 'renderizando' || !$('modal').hidden || Boolean(document.body.dataset.chatOcupado));
 iniciarPuente(async (accion, d) => {
   switch (accion) {
@@ -1219,6 +1234,17 @@ iniciarPuente(async (accion, d) => {
       return {imagen: vista, ruta, t: tt};
     }
     case 'exportar_video': {
+      // Render en segundo plano (navegador oculto): no depende de que esta pestaña esté visible.
+      await estiloCargando;
+      try {
+        const actual = await estadoVideo();
+        if (actual && faseSimple(actual.fase) === 'renderizando') return {...actual, fase: 'renderizando'};
+        const job = await encargarVideo(structuredClone(p), anchoMarco(), vistaActualCamara());
+        seguirVideo(job.id, avisar);
+        return {...job, fase: 'renderizando', nota: 'Render en segundo plano: el usuario puede cerrar o cambiar de pestaña.'};
+      } catch {
+        /* sin render en segundo plano: se exporta en esta pestaña */
+      }
       // Se lanza y se responde en el acto: el chat consulta luego con 'estado_exportacion'.
       if (trabajo.fase === 'renderizando') return trabajo;
       if (reproduciendo) alternarPlay();
@@ -1252,8 +1278,11 @@ iniciarPuente(async (accion, d) => {
       })();
       return trabajo;
     }
-    case 'estado_exportacion':
-      return trabajo;
+    case 'estado_exportacion': {
+      if (trabajo.fase === 'renderizando') return trabajo; // exportación en esta pestaña (modo antiguo)
+      const t = await estadoVideo().catch(() => null);
+      return t ? {...t, fase: faseSimple(t.fase)} : trabajo;
+    }
     default:
       throw new Error(`Acción desconocida: ${accion}`);
   }

@@ -132,6 +132,8 @@ export type OpcionesEstilo = {
   exageracion: number;
   globo: boolean;
   etiquetasPaises: boolean;
+  /** Solo rótulos de la historia: nombres de los países que salen en la pieza; ciudades y mares solo si los añades. */
+  soloHistoria?: boolean;
   ciudades: boolean;
   rios: boolean;
   provincias: boolean;
@@ -188,6 +190,7 @@ export const OPCIONES_POR_DEFECTO: OpcionesEstilo = {
   exageracion: 1.4,
   globo: true,
   etiquetasPaises: true,
+  soloHistoria: true,
   ciudades: true,
   rios: true,
   provincias: false,
