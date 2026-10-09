@@ -13,7 +13,16 @@ Tú (chat de Claude) ──► conector MCP "electric-eye" ──► puente loca
                                                                               └─► salidas/  (MP4, PNG, proyectos)
 ```
 
-## 1. Instalar y arrancar (una vez por sesión)
+## 0. Instalación automática (recomendada)
+
+Doble clic en **`Instalar Electric Eye.bat`**. Instala Node.js si falta, las dependencias, conecta Electric Eye con la
+app de escritorio de Claude y con Claude Code, crea el acceso directo **Electric Eye** en el escritorio y lo arranca.
+Al terminar, cierra y vuelve a abrir la app de Claude.
+
+O pídeselo a Claude Code en tu PC: *"Clona https://github.com/TimothyArcher90/Electric_Eye en D:\electric-eye y
+ejecuta `Instalar Electric Eye.bat`"*.
+
+## 1. Instalar y arrancar a mano
 
 Necesitas Node.js 20 o superior y Chrome o Edge.
 
