@@ -42,6 +42,9 @@ export const vistaEn = (kfsDesordenados: Keyframe[], t: number, anchoPx: number)
     const a = kfs[i];
     const b = kfs[i + 1];
     if (t > b.t) continue;
+    // Tramos 'suave': trayectoria continua por todas las tomas (como una grúa de cine). La cámara no se para en
+    // cada keyframe; solo arranca y frena al principio y al final de la pieza.
+    if (b.curva === 'suave' && !b.vuelo) return vistaContinua(kfs, i, t);
     const p = CURVAS[b.curva]((t - a.t) / Math.max(1e-6, b.t - a.t));
 
     // Longitud por el camino corto (cruzando el antimeridiano si hace falta).
@@ -73,6 +76,65 @@ export const vistaEn = (kfsDesordenados: Keyframe[], t: number, anchoPx: number)
     };
   }
   return vistaDe(kfs[kfs.length - 1]);
+};
+
+/**
+ * Interpolación de Hermite monótona (sin pasarse de las tomas) por todos los keyframes. La velocidad en cada
+ * toma intermedia es la media de los tramos vecinos; en la primera, en la última y junto a un vuelo, cero.
+ */
+const vistaContinua = (kfs: Keyframe[], i: number, t: number): Vista => {
+  // Canales: x e y en Mercator, zoom, rumbo (desenrollado) e inclinación.
+  let lonPrevia = kfs[0].centro[0];
+  let rumboPrevio = kfs[0].rumbo;
+  const canales = kfs.map((k) => {
+    let lon = k.centro[0];
+    while (lon - lonPrevia > 180) lon -= 360;
+    while (lon - lonPrevia < -180) lon += 360;
+    lonPrevia = lon;
+    const rumbo = rumboPrevio + (((k.rumbo - rumboPrevio + 540) % 360) - 180);
+    rumboPrevio = rumbo;
+    const m = MercatorCoordinate.fromLngLat([lon, k.centro[1]]);
+    return [m.x, m.y, k.zoom, rumbo, k.inclinacion];
+  });
+  const quieta = (k: number) => k <= 0 || k >= kfs.length - 1 || kfs[k].vuelo || kfs[k + 1].vuelo
+    || kfs[k].curva !== 'suave' || kfs[k + 1].curva !== 'suave';
+  const tangente = (k: number, c: number) => quieta(k) ? 0
+    : (canales[k + 1][c] - canales[k - 1][c]) / Math.max(1e-6, kfs[k + 1].t - kfs[k - 1].t);
+  const a = kfs[i];
+  const b = kfs[i + 1];
+  const dt = Math.max(1e-6, b.t - a.t);
+  const s = Math.min(1, Math.max(0, (t - a.t) / dt));
+  const h00 = 2 * s ** 3 - 3 * s ** 2 + 1;
+  const h10 = s ** 3 - 2 * s ** 2 + s;
+  const h01 = -2 * s ** 3 + 3 * s ** 2;
+  const h11 = s ** 3 - s ** 2;
+  const v = canales[0].map((_, c) => {
+    const p1 = canales[i][c];
+    const p2 = canales[i + 1][c];
+    const d = (p2 - p1) / dt;
+    let m1 = tangente(i, c);
+    let m2 = tangente(i + 1, c);
+    // Fritsch–Carlson: sin rebotes ni pasarse del valor de la toma.
+    if (Math.abs(d) < 1e-12) m1 = m2 = 0;
+    else {
+      if (m1 / d < 0) m1 = 0;
+      if (m2 / d < 0) m2 = 0;
+      const al = m1 / d;
+      const be = m2 / d;
+      const r = al * al + be * be;
+      if (r > 9) {
+        const tau = 3 / Math.sqrt(r);
+        m1 = tau * al * d;
+        m2 = tau * be * d;
+      }
+    }
+    return h00 * p1 + h10 * dt * m1 + h01 * p2 + h11 * dt * m2;
+  });
+  const ll = new MercatorCoordinate(v[0], v[1]).toLngLat();
+  let lon = ll.lng;
+  while (lon > 180) lon -= 360;
+  while (lon < -180) lon += 360;
+  return {centro: [lon, ll.lat], zoom: Math.max(0, v[2]), rumbo: ((v[3] % 360) + 540) % 360 - 180, inclinacion: v[4]};
 };
 
 const vistaDe = (k: Keyframe): Vista => ({

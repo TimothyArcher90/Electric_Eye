@@ -103,6 +103,8 @@ export const pintarOverlay = (ctx: CanvasRenderingContext2D, w: number, h: numbe
   const vertical = h > w;
   // En vertical, la interfaz de Reels/TikTok tapa ~14 % arriba y ~22 % abajo: se respeta esa zona.
   const base = vertical ? h * 0.78 : h - 30 * u;
+  // La fuente es letra pequeña: en vertical va abajo del todo para no tapar la acción del centro.
+  const baseFuente = vertical ? h - 40 * u : base;
 
   // Viñeta
   if (p.opciones.vineta > 0) {
@@ -155,7 +157,7 @@ export const pintarOverlay = (ctx: CanvasRenderingContext2D, w: number, h: numbe
     ctx.shadowBlur = 6 * u;
     ctx.textAlign = 'right';
     ctx.textBaseline = 'bottom';
-    ctx.fillText(p.fuente, w - 36 * u, base);
+    ctx.fillText(p.fuente, w - 36 * u, baseFuente);
     ctx.restore();
   }
   // Fuente (abajo a la izquierda)
@@ -168,7 +170,7 @@ export const pintarOverlay = (ctx: CanvasRenderingContext2D, w: number, h: numbe
     ctx.shadowColor = pal.haloPais;
     ctx.shadowBlur = 4 * u;
     ctx.textBaseline = 'bottom';
-    ctx.fillText(p.fuente.toUpperCase(), 36 * u, base);
+    ctx.fillText(p.fuente.toUpperCase(), 36 * u, baseFuente);
     ctx.restore();
   }
 };
