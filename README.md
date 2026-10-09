@@ -37,7 +37,7 @@ Edita el archivo de configuración de la app:
   "mcpServers": {
     "electric-eye": {
       "command": "node",
-      "args": ["C:\\ruta\\a\\electric-eye\\servidor\\mcp.mjs"]
+      "args": ["D:\\electric-eye\\servidor\\mcp.mjs"]
     }
   }
 }
@@ -48,7 +48,7 @@ Cambia la ruta por la de tu carpeta y reinicia la app. En un chat nuevo verás l
 ### Claude Code
 
 ```bash
-claude mcp add electric-eye -- node "C:\ruta\a\electric-eye\servidor\mcp.mjs"
+claude mcp add electric-eye -- node "D:\electric-eye\servidor\mcp.mjs"
 ```
 
 > El chat de claude.ai en el navegador no puede llegar a tu ordenador: para dirigir el editor usa la app de escritorio
@@ -65,7 +65,16 @@ Ejemplos de órdenes:
 - "Exporta el vídeo."
 
 Claude sigue `servidor/guia-de-direccion.md` (colores por bando, ritmo, cámara, formatos) y revisa cada pieza con
-vistas previas antes de exportar. Los vídeos, PNG y proyectos quedan en `salidas/`.
+vistas previas antes de exportar.
+
+### Dónde se guardan los archivos
+
+Por defecto, en Windows con disco D: **`D:\ElectricEye\salidas`** (vídeos, PNG y `proyectos/`); si no hay disco D,
+en `salidas/` dentro de la carpeta de Electric Eye. Para cambiarla, pídeselo al chat ("guarda las salidas en
+E:\Videos\Mapas") o edita `electric-eye.config.json` (`{"salidas": "..."}`). La variable `EE_SALIDAS` tiene prioridad.
+
+Para no ocupar el disco C, pon también la carpeta de Electric Eye en D: (por ejemplo `D:\electric-eye`): ahí quedan
+`node_modules` y la caché.
 
 ### Herramientas del conector
 
@@ -80,6 +89,7 @@ vistas previas antes de exportar. Los vídeos, PNG y proyectos quedan en `salida
 | `vista_previa` | Renderiza un fotograma y se lo enseña a Claude |
 | `exportar_png` / `exportar_video` / `estado_exportacion` | Archivos finales en `salidas/` |
 | `guardar_proyecto` / `abrir_proyecto` | Proyectos `.mapa.json` |
+| `carpeta_de_salida` | Consulta o cambia dónde se guardan los archivos |
 
 ## 4. Editar a mano
 

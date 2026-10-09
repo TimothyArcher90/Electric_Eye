@@ -5,3 +5,4 @@ data-raw/
 *.webm
 salidas/
 prueba-e2e.mjs
+electric-eye.config.json

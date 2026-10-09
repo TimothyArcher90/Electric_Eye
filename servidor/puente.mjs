@@ -4,7 +4,7 @@
 // - /guardar  : el editor sube vídeos y PNG; se guardan en salidas/.
 // - /salud    : comprobación rápida.
 import {createServer} from 'node:http';
-import {mkdirSync, writeFileSync} from 'node:fs';
+import {existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {dirname, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {randomUUID} from 'node:crypto';
@@ -12,7 +12,40 @@ import {WebSocketServer} from 'ws';
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const PUERTO = Number(process.env.EE_PUERTO ?? 5175);
-export const SALIDAS = resolve(process.env.EE_SALIDAS ?? join(RAIZ, 'salidas'));
+const CONFIG = join(RAIZ, 'electric-eye.config.json');
+
+const leerConfig = () => {
+  try {
+    return JSON.parse(readFileSync(CONFIG, 'utf8'));
+  } catch {
+    return {};
+  }
+};
+
+/**
+ * Carpeta donde se guardan vídeos, PNG y proyectos. Orden de prioridad:
+ * variable EE_SALIDAS → electric-eye.config.json → D:\ElectricEye\salidas si existe el disco D (Windows) → ./salidas.
+ */
+const salidasPorDefecto = () => {
+  if (process.env.EE_SALIDAS) return resolve(process.env.EE_SALIDAS);
+  const c = leerConfig();
+  if (c.salidas) return resolve(c.salidas);
+  if (process.platform === 'win32' && existsSync('D:\\')) return 'D:\\ElectricEye\\salidas';
+  return join(RAIZ, 'salidas');
+};
+let salidas = salidasPorDefecto();
+export const rutaSalidas = () => salidas;
+
+/** Cambia la carpeta de salida y la recuerda para las próximas veces. */
+export const fijarSalidas = (ruta) => {
+  const r = resolve(ruta);
+  mkdirSync(r, {recursive: true});
+  salidas = r;
+  writeFileSync(CONFIG, JSON.stringify({...leerConfig(), salidas: r}, null, 2));
+  return r;
+};
+// Compatibilidad: valor inicial (usar rutaSalidas() para el valor vigente).
+export const SALIDAS = salidas;
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -43,12 +76,21 @@ export const iniciarPuente = () => new Promise((ok, mal) => {
       res.end();
       return;
     }
-    if (url.pathname === '/salud') return responder(res, 200, {ok: true, editor: Boolean(editor), salidas: SALIDAS});
+    if (url.pathname === '/salud') return responder(res, 200, {ok: true, editor: Boolean(editor), salidas: rutaSalidas()});
+
+    if (url.pathname === '/config' && req.method === 'POST') {
+      try {
+        const {salidas: nueva} = JSON.parse((await leerCuerpo(req)).toString('utf8'));
+        return responder(res, 200, {ok: true, salidas: fijarSalidas(nueva)});
+      } catch (e) {
+        return responder(res, 400, {ok: false, error: `No se pudo usar esa carpeta: ${e.message}`});
+      }
+    }
 
     if (url.pathname === '/guardar' && req.method === 'POST') {
       const nombre = (url.searchParams.get('nombre') ?? 'archivo').replace(/[^\w.\- ]+/g, '_');
-      mkdirSync(SALIDAS, {recursive: true});
-      const ruta = join(SALIDAS, nombre);
+      mkdirSync(rutaSalidas(), {recursive: true});
+      const ruta = join(rutaSalidas(), nombre);
       writeFileSync(ruta, await leerCuerpo(req));
       return responder(res, 200, {ruta});
     }
@@ -117,5 +159,5 @@ export const puenteActivo = async () => {
 };
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  iniciarPuente().then(() => console.log(`Electric Eye · puente en http://127.0.0.1:${PUERTO} · salidas en ${SALIDAS}`));
+  iniciarPuente().then(() => console.log(`Electric Eye · puente en http://127.0.0.1:${PUERTO} · salidas en ${rutaSalidas()}`));
 }

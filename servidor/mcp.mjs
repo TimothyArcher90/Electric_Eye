@@ -9,7 +9,7 @@ import {randomUUID} from 'node:crypto';
 import {McpServer} from '@modelcontextprotocol/sdk/server/mcp.js';
 import {StdioServerTransport} from '@modelcontextprotocol/sdk/server/stdio.js';
 import {z} from 'zod';
-import {iniciarPuente, puenteActivo, PUERTO, SALIDAS} from './puente.mjs';
+import {iniciarPuente, puenteActivo, PUERTO} from './puente.mjs';
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const GUIA = readFileSync(join(RAIZ, 'servidor', 'guia-de-direccion.md'), 'utf8');
@@ -22,6 +22,8 @@ if (!(await puenteActivo())) {
     /* otro proceso lo abrió a la vez: se usa ese */
   }
 }
+
+const salidasActuales = async () => (await (await fetch(`http://127.0.0.1:${PUERTO}/salud`)).json()).salidas;
 
 const orden = async (accion, datos = {}, limiteMs = 120000) => {
   const r = await fetch(`http://127.0.0.1:${PUERTO}/rpc`, {
@@ -290,11 +292,24 @@ servidor.registerTool('estado_exportacion', {
   title: 'Estado de la exportación', description: 'Fase (renderizando, listo, error), fotogramas hechos/total y, al terminar, la ruta del vídeo en disco.',
 }, async () => texto(await orden('estado_exportacion')));
 
+servidor.registerTool('carpeta_de_salida', {
+  title: 'Carpeta de salida', description: 'Sin ruta: dice dónde se guardan vídeos, PNG y proyectos. Con ruta (por ejemplo "D:\\ElectricEye\\salidas"): la cambia y la recuerda.',
+  inputSchema: {ruta: z.string().optional()},
+}, async ({ruta}) => {
+  if (!ruta) return texto({salidas: await salidasActuales()});
+  const r = await fetch(`http://127.0.0.1:${PUERTO}/config`, {
+    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({salidas: ruta}),
+  });
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.error);
+  return texto({salidas: j.salidas});
+});
+
 servidor.registerTool('guardar_proyecto', {
   title: 'Guardar proyecto', description: 'Guarda el proyecto como .mapa.json en salidas/proyectos.',
 }, async () => {
   const p = await proyectoActual();
-  const dir = join(SALIDAS, 'proyectos');
+  const dir = join(await salidasActuales(), 'proyectos');
   mkdirSync(dir, {recursive: true});
   const ruta = join(dir, `${limpiar(p.nombre).replace(/[^a-z0-9]+/g, '-') || 'mapa'}.mapa.json`);
   writeFileSync(ruta, JSON.stringify(p, null, 2));
