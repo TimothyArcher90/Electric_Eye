@@ -53,6 +53,8 @@ input[type=range] { accent-color: var(--acento); padding: 0; }
 .barra { grid-area: barra; display: flex; align-items: center; gap: 14px; padding: 0 14px; background: var(--panel); border-bottom: 1px solid var(--borde); }
 .marca { font-weight: 700; letter-spacing: .02em; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 .logo { width: 18px; height: 18px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #f3c9a9, var(--acento) 60%); }
+.estado-claude { font-size: 11px; font-weight: 600; color: var(--tenue); padding: 2px 8px; border: 1px solid var(--borde); border-radius: 99px; margin-left: 6px; }
+.estado-claude.on { color: #3E8E4E; border-color: #9CCB9F; background: #EEF7EE; }
 .nombre { background: transparent; border-color: transparent; font-weight: 600; width: 230px; }
 .nombre:hover { border-color: var(--borde); }
 .grupo { display: flex; gap: 6px; align-items: center; }

@@ -1,22 +1,30 @@
 {
-  "name": "mapas-multimedia",
+  "name": "electric-eye",
   "version": "1.0.0",
   "private": true,
   "description": "Portal para navegar, diseñar y animar mapas con cámara por keyframes y exportar vídeo de alta calidad.",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "iniciar": "node servidor/iniciar.mjs",
+    "puente": "node servidor/puente.mjs",
+    "mcp": "node servidor/mcp.mjs",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "datos": "python3 scripts/preparar-datos.py"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "maplibre-gl": "5.24.0",
     "mediabunny": "1.61.3",
-    "polygon-clipping": "^0.15.7"
+    "polygon-clipping": "^0.15.7",
+    "ws": "^8.22.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/geojson": "^7946.0.16",
+    "@types/node": "^22.19.1",
+    "@types/ws": "^8.18.1",
     "typescript": "5.9.3",
     "vite": "6.4.4"
   }

@@ -105,7 +105,21 @@ export type ElemTitulo = Base & {
   posicion: 'arriba' | 'abajo' | 'centro';
 };
 
-export type Elemento = ElemPais | ElemRuta | ElemPin | ElemTexto | ElemZona | ElemTitulo | ElemTerritorio;
+/** Figura 3D: columna extruida sobre un punto (cifras, presencia militar, producción…). */
+export type ElemColumna = Base & {
+  tipo: 'columna';
+  en: LonLat;
+  /** Altura en km, a escala real del mapa: 40–200 km se leen bien a escala de país (zoom 5–6). */
+  alturaKm: number;
+  radioKm: number;
+  color: string;
+  forma: 'cilindro' | 'prisma' | 'hexagono';
+  texto: string;
+  /** Segundos que tarda en crecer. */
+  crece: number;
+};
+
+export type Elemento = ElemPais | ElemRuta | ElemPin | ElemTexto | ElemZona | ElemTitulo | ElemTerritorio | ElemColumna;
 export type TipoElemento = Elemento['tipo'];
 
 export type EstiloId = 'atlas' | 'documental' | 'geopolitico' | 'realista' | 'noche' | 'satelite' | 'calles' | 'minimal';

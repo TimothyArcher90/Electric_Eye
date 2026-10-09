@@ -209,6 +209,7 @@ export const aplicarElementos = (map: MapLibre, p: Proyecto, t: number, opts: {s
   const pins: GeoJSON.Feature[] = [];
   const textos: GeoJSON.Feature[] = [];
   const territorios: GeoJSON.Feature[] = [];
+  const columnas: GeoJSON.Feature[] = [];
   const estadoPaises = new Map<string, {color: string; op: number; opBorde: number}>();
 
   for (const e of p.elementos as Elemento[]) {
@@ -281,6 +282,19 @@ export const aplicarElementos = (map: MapLibre, p: Proyecto, t: number, opts: {s
         }
         break;
       }
+      case 'columna': {
+        const k = e.crece > 0 ? suave(Math.min(1, Math.max(0, (t - e.desde) / e.crece))) : 1;
+        const lados = e.forma === 'cilindro' ? 48 : e.forma === 'hexagono' ? 6 : 4;
+        const altura = e.alturaKm * 1000 * k;
+        columnas.push({type: 'Feature', properties: {color: e.color, op, altura, base: 0},
+          geometry: {type: 'Polygon', coordinates: [circulo(e.en, e.radioKm, lados)]}});
+        if (e.texto && k > 0.98) {
+          textos.push({type: 'Feature', geometry: {type: 'Point', coordinates: e.en}, properties: {
+            texto: e.texto, tamano: 22, color: '#1E1A16', op, cursiva: 0, espaciado: 0.05, halo: 'rgba(255,255,255,0.9)',
+          }});
+        }
+        break;
+      }
       case 'territorio': {
         const f = e.avance > 0 ? suave(Math.min(1, Math.max(0, (t - e.desde) / e.avance))) : 1;
         const mp = barrido(e.iso, e.direccion, f * e.hasta_fraccion);
@@ -299,6 +313,7 @@ export const aplicarElementos = (map: MapLibre, p: Proyecto, t: number, opts: {s
   fijar(map, 'mm-pins', fc(pins));
   fijar(map, 'mm-textos', fc(textos));
   fijar(map, 'mm-territorios', fc(territorios));
+  fijar(map, 'mm-columnas', fc(columnas));
 
   // Países: feature-state, sin reescribir la geometría (que pesa varios MB).
   const previos = paisesActivos.get(map) ?? new Set<string>();

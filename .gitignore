@@ -3,3 +3,5 @@ dist/
 data-raw/
 *.mp4
 *.webm
+salidas/
+prueba-e2e.mjs

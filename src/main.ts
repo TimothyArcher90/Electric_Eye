@@ -7,18 +7,19 @@ import {aplicarElementos, borrador, olvidarEstado, precargarGeometrias, precarga
 import {ATRIBUCION, BANDOS, construirEstilo, NOMBRES_ESTILO, paletaDe, PALETAS} from './estilos';
 import {capturarPNG, diagnosticar, exportarVideo} from './exportar';
 import {aplicarOpticaPrevia, pintarOverlay} from './overlay';
+import {iniciarPuente, subirArchivo} from './puente';
 import {
   type Elemento, type EstiloId, OPCIONES_DE_ESTILO, type Keyframe, type LonLat, normalizar, type OpcionesEstilo, type PresetEstilo, type Proyecto,
   proyectoDemo, proyectoNuevo, type TipoElemento, uid,
 } from './proyecto';
 
 // ── Estado ──────────────────────────────────────────────────────────────────────────
-const CLAVE = 'mapas-multimedia:proyecto';
+const CLAVE = 'electric-eye:proyecto';
 let p: Proyecto = cargarGuardado() ?? proyectoDemo();
 let t = 0;
 let reproduciendo = false;
 let sel: {tipo: 'kf' | 'el'; id: string} | null = null;
-type Herramienta = 'navegar' | 'pais' | 'territorio' | 'ficha' | 'ruta' | 'pin' | 'texto' | 'zona' | 'titulo';
+type Herramienta = 'navegar' | 'pais' | 'territorio' | 'ficha' | 'columna' | 'ruta' | 'pin' | 'texto' | 'zona' | 'titulo';
 let herramienta: Herramienta = 'navegar';
 let puntosRuta: LonLat[] = [];
 const historia: string[] = [];
@@ -26,7 +27,7 @@ const futuro: string[] = [];
 
 function cargarGuardado(): Proyecto | null {
   try {
-    const s = localStorage.getItem(CLAVE);
+    const s = localStorage.getItem(CLAVE) ?? localStorage.getItem('mapas-multimedia:proyecto');
     return s ? normalizar(JSON.parse(s)) : null;
   } catch {
     return null;
@@ -209,10 +210,10 @@ const tDe = (x: number) => Math.max(0, Math.min(p.duracion, (x / anchoPistas()) 
 const ajustarFps = (s: number) => Math.round(s * p.fps) / p.fps;
 
 const COLOR_TIPO: Record<TipoElemento, string> = {
-  pais: '#8A5CF6', ruta: '#E0402B', pin: '#F59E0B', texto: '#10B981', zona: '#3B82F6', titulo: '#EC4899', territorio: '#5C844E',
+  pais: '#8A5CF6', ruta: '#E0402B', pin: '#F59E0B', texto: '#10B981', zona: '#3B82F6', titulo: '#EC4899', territorio: '#5C844E', columna: '#7A5C3A',
 };
 const NOMBRE_TIPO: Record<TipoElemento, string> = {
-  pais: 'País', ruta: 'Ruta', pin: 'Pin', texto: 'Texto', zona: 'Zona', titulo: 'Título', territorio: 'Territorio',
+  pais: 'País', ruta: 'Ruta', pin: 'Pin', texto: 'Texto', zona: 'Zona', titulo: 'Título', territorio: 'Territorio', columna: 'Columna 3D',
 };
 
 function actualizarCabezal() {
@@ -618,6 +619,16 @@ function renderInspector() {
         cCheck('Borde discontinuo', e.discontinua, (b) => (e.discontinua = b)),
       );
       break;
+    case 'columna':
+      ins.append(
+        cTexto('Rótulo encima', e.texto, (s) => (e.texto = s)),
+        cColor('Color', e.color, (s) => (e.color = s)),
+        fila(cNum('Altura (km)', e.alturaKm, (n) => (e.alturaKm = Math.max(1, n)), {min: 1, paso: 50}),
+          cNum('Radio (km)', e.radioKm, (n) => (e.radioKm = Math.max(1, n)), {min: 1, paso: 5})),
+        fila(cSelect('Forma', e.forma, [['hexagono', 'Hexágono'], ['cilindro', 'Cilindro'], ['prisma', 'Prisma']], (v) => (e.forma = v)),
+          cNum('Crece en (s)', e.crece, (n) => (e.crece = Math.max(0, n)), {min: 0, paso: 0.1})),
+      );
+      break;
     case 'titulo':
       ins.append(
         cTexto('Título', e.texto, (s) => (e.texto = s)),
@@ -780,6 +791,7 @@ const HERRAMIENTAS: [Herramienta, string, string, string][] = [
   ['pais', '▦', 'País', 'Haz clic en un país para resaltarlo desde el tiempo actual.'],
   ['territorio', '◧', 'Frente', 'Haz clic en un país: el color avanzará sobre él como un frente (control territorial).'],
   ['ficha', '⬢', 'Ficha', 'Haz clic para plantar una ficha hexagonal de pie (soldado, avión, barco, retrato…).'],
+  ['columna', '▮', '3D', 'Haz clic para levantar una columna 3D (cifras, presencia, producción). Inclina la cámara para verla.'],
   ['ruta', '➝', 'Ruta', 'Haz clic para añadir puntos. Doble clic o Intro para terminar. Esc para cancelar.'],
   ['pin', '◉', 'Pin', 'Haz clic donde quieras el pin. Toma el nombre de la ciudad más cercana.'],
   ['texto', 'T', 'Texto', 'Haz clic para colocar un texto sobre el mapa (mares, regiones, cifras).'],
@@ -864,6 +876,10 @@ map.on('click', async (ev) => {
       await asegurarRecursos();
       break;
     }
+    case 'columna':
+      nuevo({tipo: 'columna', nombre: 'Columna', en, alturaKm: 120, radioKm: 25, color: acento(), forma: 'hexagono', texto: '',
+        crece: 1.2, desde: t0, hasta: null, fundido: 0.2});
+      break;
     case 'ficha':
       nuevo({tipo: 'pin', nombre: 'Ficha', en, texto: '', color: BANDOS.aliado, estilo: 'ficha', etiqueta: 'ninguna', icono: '🪖',
         fondo: 'color', tamano: 1, desde: t0, hasta: null, fundido: 0.2});
@@ -1141,6 +1157,90 @@ recargarEstilo();
 estiloCargando.then(() => irA(0));
 void asegurarRecursos();
 confirmar();
+
+// ── Conexión con el chat de Claude (servidor local + conector MCP) ────────────────
+const reducirPNG = async (b: Blob, maxAncho: number) => {
+  const bmp = await createImageBitmap(b);
+  const k = Math.min(1, maxAncho / bmp.width);
+  const c = document.createElement('canvas');
+  c.width = Math.round(bmp.width * k);
+  c.height = Math.round(bmp.height * k);
+  c.getContext('2d')!.drawImage(bmp, 0, 0, c.width, c.height);
+  return c.toDataURL('image/jpeg', 0.85);
+};
+
+const trabajo: {fase: string; hecho: number; total: number; ruta: string | null; error: string | null; inicio: number;
+  codec?: string; mb?: number; segundos?: number} = {fase: 'sin trabajo', hecho: 0, total: 0, ruta: null, error: null, inicio: 0};
+
+iniciarPuente(async (accion, d) => {
+  switch (accion) {
+    case 'estado':
+      return {proyecto: p, t, vista: vistaActual(), anchoMarco: anchoMarco(), estilos: Object.keys(NOMBRES_ESTILO)};
+    case 'cargar': {
+      const np = normalizar(d.proyecto as Partial<Proyecto>);
+      // Proyecto nuevo o estilo nuevo: primero los ajustes propios del estilo, luego los pedidos.
+      if (d.estiloNuevo || !(d.proyecto as Partial<Proyecto>).opciones) {
+        Object.assign(np.opciones, OPCIONES_DE_ESTILO[np.estilo] ?? {}, (d.opciones as object) ?? {});
+      }
+      cargarProyecto(np);
+      await estiloCargando;
+      await asegurarRecursos();
+      return {elementos: p.elementos.length, keyframes: p.camara.length};
+    }
+    case 'ir_a':
+      irA(Number(d.t ?? 0));
+      return {t};
+    case 'mirar':
+      map.jumpTo({center: d.centro as LonLat, zoom: Number(d.zoom), bearing: Number(d.rumbo ?? 0), pitch: Number(d.inclinacion ?? 0)});
+      return vistaActual();
+    case 'capturar': {
+      await estiloCargando;
+      const tt = d.t == null ? t : Number(d.t);
+      const b = await capturarPNG(structuredClone(p), tt, anchoMarco(), vistaActualCamara());
+      const vista = await reducirPNG(b, Number(d.maxAncho ?? 1280));
+      const ruta = d.guardar ? await subirArchivo(b, `${slug(p.nombre)}-${tt.toFixed(2)}s.png`) : null;
+      return {imagen: vista, ruta, t: tt};
+    }
+    case 'exportar_video': {
+      // Se lanza y se responde en el acto: el chat consulta luego con 'estado_exportacion'.
+      if (trabajo.fase === 'renderizando') return trabajo;
+      if (reproduciendo) alternarPlay();
+      await estiloCargando;
+      cancelar = false;
+      Object.assign(trabajo, {fase: 'renderizando', hecho: 0, total: Math.round(p.duracion * p.fps), ruta: null, error: null, inicio: Date.now()});
+      modal.hidden = false;
+      $('modal-titulo').textContent = `Claude está exportando ${p.ancho}×${p.alto} · ${p.fps} fps`;
+      void (async () => {
+        try {
+          const r = await exportarVideo(structuredClone(p), anchoMarco(), (h, tot, fase) => {
+            trabajo.hecho = h;
+            trabajo.total = tot;
+            progreso(h, tot, fase);
+          }, () => cancelar, vistaActualCamara());
+          trabajo.ruta = await subirArchivo(r.blob, `${slug(p.nombre)}.${r.extension.replace(/^\./, '')}`);
+          trabajo.codec = r.codec;
+          trabajo.mb = +(r.blob.size / 1e6).toFixed(1);
+          trabajo.fase = 'listo';
+        } catch (e) {
+          trabajo.fase = 'error';
+          trabajo.error = (e as Error).message;
+        } finally {
+          trabajo.segundos = Math.round((Date.now() - trabajo.inicio) / 1000);
+          modal.hidden = true;
+        }
+      })();
+      return trabajo;
+    }
+    case 'estado_exportacion':
+      return trabajo;
+    default:
+      throw new Error(`Acción desconocida: ${accion}`);
+  }
+}, (on) => {
+  const e = $('estado-claude');
+  e.classList.toggle('on', on);
+  e.title = on ? 'Conectado: el chat de Claude puede dirigir este editor' : 'Sin conexión con el servidor local (npm run iniciar)';
+});
 
 // Acceso para pruebas automatizadas y depuración desde la consola.
 Object.assign(window, {mm: {map, get p() { return p; }, get t() { return t; }, irA, cargarProyecto, anchoMarco,

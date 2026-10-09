@@ -167,6 +167,7 @@ const fuentesBase = (): Record<string, SourceSpecification> => ({
   'mm-textos': {type: 'geojson', data: {type: 'FeatureCollection', features: []}},
   'mm-borrador': {type: 'geojson', data: {type: 'FeatureCollection', features: []}},
   'mm-territorios': {type: 'geojson', data: {type: 'FeatureCollection', features: []}},
+  'mm-columnas': {type: 'geojson', data: {type: 'FeatureCollection', features: []}},
 });
 
 const fuentesRelieve = (): Record<string, SourceSpecification> => ({
@@ -385,6 +386,10 @@ const capasEtiquetas = (id: EstiloId, c: Paleta, o: OpcionesEstilo, rot: NonNull
 
 /** Etiquetas de pines y textos libres: siempre arriba del todo. */
 const capasTextoProyecto = (): LayerSpecification[] => [
+  // Figuras 3D extruidas.
+  {id: 'mm-columnas', type: 'fill-extrusion', source: 'mm-columnas', paint: {
+    'fill-extrusion-color': ['get', 'color'], 'fill-extrusion-height': ['get', 'altura'],
+    'fill-extrusion-base': ['get', 'base'], 'fill-extrusion-opacity': 0.95, 'fill-extrusion-vertical-gradient': true}},
   // Fichas de pie: sombra en el suelo y la ficha mirando a cámara.
   {id: 'mm-fichas-sombra', type: 'circle', source: 'mm-pins', filter: ['==', ['get', 'estilo'], 'ficha'], paint: {
     'circle-color': '#1A120A', 'circle-radius': ['*', 13, ['get', 'tam'], ['get', 'escala']], 'circle-blur': 0.9,

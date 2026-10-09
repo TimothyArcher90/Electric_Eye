@@ -1,79 +1,131 @@
-# Mapas multimedia
+# Electric Eye
 
-Portal para **navegar, diseñar y animar mapas** y exportarlos como vídeo de alta calidad, en el registro de los documentales de geopolítica: globo que gira, vuelo de cámara hasta la región, países que se iluminan, rutas que se dibujan, pines con etiqueta de papel, relieve y grano de película.
+Editor local de mapas animados en el registro de los documentales de geopolítica: atlas en 3D inclinado, países que
+se iluminan, frentes que avanzan, fichas de pie, objetivos que laten, radares, rutas, columnas 3D, profundidad de
+campo y etalonaje. Exporta MP4 y PNG.
 
-Funciona en el navegador. No necesita After Effects ni plugins de pago, y no pide claves de API.
+**Se dirige desde el chat de Claude.** Le dices qué quieres contar; Claude monta la pieza en el editor, la mira y la
+corrige, y exporta el vídeo. También puedes editar a mano cuando quieras. No hace falta clave de API: usa tu
+suscripción de Claude a través de la app de escritorio o de Claude Code.
 
-## Arrancar
-
-```bash
-npm install
-npm run dev        # abre http://localhost:5173
+```
+Tú (chat de Claude) ──► conector MCP "electric-eye" ──► puente local :5175 ──► editor en el navegador :5174
+                                                                              └─► salidas/  (MP4, PNG, proyectos)
 ```
 
-Para publicarlo como web estática: `npm run build` y sube la carpeta `dist/` a cualquier hosting (Vercel, Netlify, GitHub Pages).
+## 1. Instalar y arrancar (una vez por sesión)
 
-Navegador recomendado: **Chrome o Edge** de escritorio con aceleración por hardware (la exportación usa WebCodecs).
+Necesitas Node.js 20 o superior y Chrome o Edge.
 
-## Cómo se trabaja
+- **Windows:** doble clic en `Iniciar Electric Eye.bat` (la primera vez instala dependencias).
+- **Cualquier sistema:** `npm install` y luego `npm run iniciar`.
+
+Se abre `http://127.0.0.1:5174`. Deja esa pestaña abierta: es donde se renderiza. El indicador **● Claude** de la
+barra superior se pone verde cuando el chat está conectado.
+
+## 2. Conectar el chat de Claude
+
+### App de escritorio de Claude (recomendado)
+
+Edita el archivo de configuración de la app:
+
+- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "electric-eye": {
+      "command": "node",
+      "args": ["C:\\ruta\\a\\electric-eye\\servidor\\mcp.mjs"]
+    }
+  }
+}
+```
+
+Cambia la ruta por la de tu carpeta y reinicia la app. En un chat nuevo verás las herramientas de Electric Eye.
+
+### Claude Code
+
+```bash
+claude mcp add electric-eye -- node "C:\ruta\a\electric-eye\servidor\mcp.mjs"
+```
+
+> El chat de claude.ai en el navegador no puede llegar a tu ordenador: para dirigir el editor usa la app de escritorio
+> o Claude Code. El modelo sigue siendo Claude en la nube; lo único local es el conector y el editor.
+
+## 3. Pedir una pieza
+
+Ejemplos de órdenes:
+
+- "Mapa de 20 s en 16:9: Irán en naranja, frente verde que entra en Irak desde el sur, flota en el golfo de Omán,
+  objetivo que late sobre Bandar Abbas y título 'El estrecho de Ormuz'. Cámara baja hacia Ormuz."
+- "Hazlo vertical para Reels y más lento al final."
+- "Pon columnas 3D con la producción de petróleo de Arabia Saudí, Irak e Irán (te paso las cifras)."
+- "Exporta el vídeo."
+
+Claude sigue `servidor/guia-de-direccion.md` (colores por bando, ritmo, cámara, formatos) y revisa cada pieza con
+vistas previas antes de exportar. Los vídeos, PNG y proyectos quedan en `salidas/`.
+
+### Herramientas del conector
+
+| Herramienta | Qué hace |
+|---|---|
+| `guia_de_direccion` | Reglas de estilo y formato de cada elemento |
+| `buscar_lugar` | Países, ciudades y mares con coordenadas reales (sin conexión) |
+| `nuevo_proyecto` / `configurar_estilo` | Formato, duración, fps, estilo y ajustes |
+| `poner_camara` | Keyframes de cámara por lugar o coordenadas |
+| `anadir_elementos` / `editar_elemento` / `borrar_elementos` | País, frente, ficha, pin, ruta, texto, zona, título, columna 3D |
+| `ver_estado` | Lo que hay ahora en el editor |
+| `vista_previa` | Renderiza un fotograma y se lo enseña a Claude |
+| `exportar_png` / `exportar_video` / `estado_exportacion` | Archivos finales en `salidas/` |
+| `guardar_proyecto` / `abrir_proyecto` | Proyectos `.mapa.json` |
+
+## 4. Editar a mano
 
 | Paso | Qué haces |
 |---|---|
-| 1. Encuadre | Elige formato (16:9, 4K, 9:16, 4:5, 1:1, 4:3) y FPS arriba. |
-| 2. Estilo | **Atlas 3D (geopolítico)**, el registro de los documentales de geopolítica: papel crema, batimetría, relieve grabado, rótulos con serifa tumbados sobre el mapa, profundidad de campo y etalonaje cálido. También Documental (papel), Geopolítico, Realista (montañas), Noche, Minimal, Satélite y Calles. En **Ajustes del estilo**: globo, relieve, terreno 3D, ríos, mares, provincias, grano, viñeta, profundidad y etalonaje. |
-| 3. Cámara | Navega el mapa (arrastrar = mover; clic derecho o Ctrl + arrastrar = girar e inclinar). Pulsa **K** para fijar un keyframe. Mueve el cabezal y repite. La cámara viaja entre keyframes con la curva elegida; **Vuelo** la aleja a mitad de trayecto. |
-| 4. Elementos | **País** (resaltado con canto y sombra), **Frente** (el color avanza sobre un país en la dirección que elijas), **Ficha** (hexágono de pie con silueta, texto o retrato subido), **Ruta**, **Pin**, **Texto**, **Zona** (área, objetivo con anillos que laten o radar con onda) y **Título**. Cada elemento tiene su barra en la línea de tiempo: arrástrala o estírala. |
-| 5. Exportar | **Exportar vídeo** renderiza fotograma a fotograma (sin saltos, esperando a que cargue cada tesela) en MP4 (H.264 si el navegador lo soporta; si no, VP9/AV1). **Capturar PNG** saca el fotograma actual a resolución final. |
+| Encuadre | Formato (16:9, 4K, 9:16, 4:5, 1:1, 4:3) y FPS arriba. |
+| Estilo | **Atlas 3D** por defecto; también Documental, Geopolítico, Realista (montañas), Noche, Minimal, Satélite y Calles. **Ajustes del estilo**: globo, relieve, terreno 3D, ríos, mares, provincias, grano, viñeta, profundidad y etalonaje. |
+| Cámara | Navega (arrastrar mueve; clic derecho o Ctrl + arrastrar gira e inclina) y pulsa **K** para fijar un keyframe. |
+| Elementos | País, Frente, Ficha, 3D, Ruta, Pin, Texto, Zona y Título. Cada uno tiene su barra en la línea de tiempo. |
+| Exportar | **Exportar vídeo** (MP4 con H.264 si el navegador lo soporta, si no VP9/AV1) y **Capturar PNG**. |
 
-Atajos: `Espacio` reproducir · `K` keyframe · `←/→` fotograma (con `Shift`, 1 s) · `Supr` borrar · `Ctrl+Z / Ctrl+Y` deshacer y rehacer · `Esc` cancelar · `G` guías de zona segura.
+Atajos: `Espacio` reproducir · `K` keyframe · `←/→` fotograma (con `Shift`, 1 s) · `Supr` borrar · `Ctrl+Z / Ctrl+Y`
+deshacer y rehacer · `Esc` cancelar · `G` guías de zona segura. El botón ◐ cambia entre tema claro y oscuro.
 
-**Logo en pantalla:** panel Proyecto → sube un PNG con transparencia; va abajo a la izquierda y la fuente pasa a la derecha.
-**Tema:** claro y tranquilo por defecto; el botón ◐ cambia a oscuro.
-
-El proyecto se guarda solo en el navegador. **Guardar / Abrir** lo exporta e importa como `.mapa.json`, para versionarlo o compartirlo.
-
-## Estilo a medida (copiar una referencia)
-
-**Estilo → Importar estilo…** carga un JSON con paleta, colores de montaña por altitud, rótulos y opciones.
-El proceso completo para sacarlo de un vídeo de referencia (fotogramas, ficha técnica, JSON) está en
-[`referencias/README.md`](referencias/README.md); hay un ejemplo en `referencias/preset-ejemplo.json`.
+**Copiar el estilo de una referencia:** `referencias/README.md` (proceso) y `referencias/caspian-report-ficha.md`
+(ingeniería inversa de la referencia de la que sale el estilo Atlas 3D). **Estilo → Importar estilo…** carga un JSON
+con paleta, rampa de altitud, rótulos y opciones.
 
 ## Datos y licencias
 
 | Capa | Fuente | Licencia |
 |---|---|---|
-| Países, ciudades, ríos, lagos, mares, provincias | [Natural Earth](https://www.naturalearthdata.com) (incluida en `public/data/`) | Dominio público |
-| Relieve y terreno 3D | Terrarium (Mapzen / Joerd) en AWS Open Data | Abierta, con atribución |
-| Satélite | Sentinel-2 cloudless **2016** de EOX | CC BY 4.0 (atribución obligatoria) |
-| Calles | OpenFreeMap (datos de OpenStreetMap) | ODbL, atribución "© OpenStreetMap contributors" |
+| Países, ciudades, ríos, lagos, mares, provincias | [Natural Earth](https://www.naturalearthdata.com) (incluido en `public/data/`) | Dominio público |
+| Relieve, batimetría y terreno 3D | Terrarium (Mapzen / Joerd) en AWS Open Data | Abierta, con atribución |
+| Satélite | Sentinel-2 cloudless **2016** de EOX | CC BY 4.0 |
+| Calles | OpenFreeMap (datos de OpenStreetMap) | ODbL, "© OpenStreetMap contributors" |
 | Tipografía | Noto Sans, Cinzel y EB Garamond (glifos en `public/fonts/`, generados con `scripts/generar-glifos.py`) | SIL Open Font License |
 
-La atribución de cada estilo aparece en el panel derecho. Ponla en pantalla o en la descripción del vídeo.
-
-Avisos:
-- Los años más recientes de Sentinel-2 cloudless (2018 en adelante) son **no comerciales**. Por eso el portal usa 2016.
-- Natural Earth dibuja una versión de las fronteras en disputa. Si la frontera es el tema del vídeo, avísalo en pantalla o dibújala a mano.
-- El satélite, las calles y el relieve se descargan de servicios públicos gratuitos. Sin conexión, los estilos vectoriales siguen funcionando (todo lo de Natural Earth va incluido).
-
-## Regenerar los datos
-
-```bash
-mkdir -p data-raw && cd data-raw
-B=https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson
-for f in ne_10m_admin_0_countries ne_50m_admin_0_countries ne_10m_populated_places ne_10m_rivers_lake_centerlines ne_10m_lakes ne_10m_admin_1_states_provinces_lines ne_10m_geography_marine_polys; do curl -LO $B/$f.geojson; done
-cd .. && npm run datos
-```
+Los años 2018+ de Sentinel-2 cloudless son no comerciales; por eso se usa 2016. Natural Earth dibuja una versión de las
+fronteras en disputa: si la frontera es el tema, avísalo en pantalla.
 
 ## Arquitectura
 
 | Archivo | Qué hace |
 |---|---|
-| `src/proyecto.ts` | Modelo del proyecto (JSON): keyframes y elementos. |
-| `src/camara.ts` | Interpolación de cámara en Mercator, curvas y vuelo. |
-| `src/estilos.ts` | Estilos de mapa (MapLibre) y paletas. |
-| `src/capas.ts` | Proyecto → capas del mapa en el segundo *t* (rutas, pines, zonas, países por feature-state). |
-| `src/overlay.ts` | Títulos, fuente, grano y viñeta (vista previa y exportación). |
-| `src/exportar.ts` | Render determinista en un mapa oculto y codificación MP4 (Mediabunny + WebCodecs). |
-| `src/main.ts` | Interfaz del editor: línea de tiempo, inspector, herramientas. |
+| `servidor/mcp.mjs` | Conector MCP: las herramientas que usa Claude |
+| `servidor/puente.mjs` | Servidor local: pasa órdenes al editor y guarda archivos en `salidas/` |
+| `servidor/iniciar.mjs` | Arranca puente y editor y abre el navegador |
+| `servidor/guia-de-direccion.md` | Reglas de dirección que lee Claude |
+| `src/puente.ts` | Lado del editor: recibe y ejecuta órdenes |
+| `src/proyecto.ts` | Modelo del proyecto (JSON) |
+| `src/camara.ts` | Interpolación de cámara, curvas y vuelo |
+| `src/estilos.ts` | Estilos de mapa (MapLibre) y paletas medidas |
+| `src/capas.ts` | Proyecto → capas del mapa: fichas, frentes, zonas, columnas 3D |
+| `src/overlay.ts` | Títulos, logo, grano, viñeta, profundidad de campo y etalonaje |
+| `src/exportar.ts` | Render determinista y codificación MP4 (Mediabunny + WebCodecs) |
+| `src/main.ts` | Interfaz del editor |
 
-Motor: [MapLibre GL JS](https://maplibre.org) (globo, terreno 3D, sombreado de relieve) y [Mediabunny](https://mediabunny.dev) para escribir el MP4.
+Regenerar datos: ver `scripts/preparar-datos.py`. Regenerar glifos: `scripts/generar-glifos.py <carpeta con TTF>`.
