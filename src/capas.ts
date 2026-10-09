@@ -1,6 +1,150 @@
 import type {GeoJSONSource, Map as MapLibre} from 'maplibre-gl';
+import polygonClipping, {type MultiPolygon, type Polygon as PolyClip} from 'polygon-clipping';
 import {circulo, densificar, recortar, rumboFinal, visibilidad} from './geo';
-import type {Elemento, Proyecto} from './proyecto';
+import type {ElemPin, Elemento, Proyecto} from './proyecto';
+
+// ── Imágenes subidas (retratos de fichas, logo) ────────────────────────────────────
+// Se decodifican una vez antes de pintar: MapLibre necesita la imagen ya lista.
+
+const imagenes = new Map<string, HTMLImageElement>();
+export const claveImagen = (dataUrl: string) => {
+  let h = 0;
+  for (let i = 0; i < dataUrl.length; i += 7) h = (h * 31 + dataUrl.charCodeAt(i)) | 0;
+  return `${dataUrl.length.toString(36)}${(h >>> 0).toString(36)}`;
+};
+export const imagenCargada = (dataUrl: string) => imagenes.get(claveImagen(dataUrl));
+export const precargarImagenes = async (p: Proyecto) => {
+  const urls = [
+    ...p.elementos.flatMap((e) => (e.tipo === 'pin' && e.imagen ? [e.imagen] : [])),
+    ...(p.marca?.imagen ? [p.marca.imagen] : []),
+  ];
+  await Promise.all(urls.map(async (u) => {
+    const k = claveImagen(u);
+    if (imagenes.has(k)) return;
+    const img = new Image();
+    img.src = u;
+    try {
+      await img.decode();
+      imagenes.set(k, img);
+    } catch {
+      /* imagen rota: la ficha sale sin ella */
+    }
+  }));
+};
+
+// ── Geometrías de país para el barrido territorial (1:50m, más ligeras) ──────────────
+
+const geometrias = new Map<string, MultiPolygon>();
+let cargaGeometrias: Promise<void> | null = null;
+export const precargarGeometrias = () => {
+  cargaGeometrias ??= fetch(new URL('data/paises-50m.geojson', document.baseURI).href)
+    .then((r) => r.json())
+    .then((d: GeoJSON.FeatureCollection) => {
+      for (const f of d.features) {
+        const iso = f.properties?.iso as string | undefined;
+        const g = f.geometry;
+        if (!iso || !g) continue;
+        if (g.type === 'Polygon') geometrias.set(iso, [g.coordinates as PolyClip]);
+        if (g.type === 'MultiPolygon') geometrias.set(iso, g.coordinates as MultiPolygon);
+      }
+    })
+    .catch(() => undefined);
+  return cargaGeometrias;
+};
+
+/** Parte del país ya "conquistada": todo lo que queda detrás de un frente recto que avanza. */
+const barrido = (iso: string, direccion: number, f: number): MultiPolygon | null => {
+  const geo = geometrias.get(iso);
+  if (!geo || f <= 0) return null;
+  const pts = geo.flatMap((pol) => pol[0]);
+  const lon0 = (Math.min(...pts.map((q) => q[0])) + Math.max(...pts.map((q) => q[0]))) / 2;
+  const lat0 = (Math.min(...pts.map((q) => q[1])) + Math.max(...pts.map((q) => q[1]))) / 2;
+  const k = Math.cos((lat0 * Math.PI) / 180);
+  const ux = Math.sin((direccion * Math.PI) / 180);
+  const uy = Math.cos((direccion * Math.PI) / 180);
+  const proy = pts.map((q) => (q[0] - lon0) * k * ux + (q[1] - lat0) * uy);
+  const min = Math.min(...proy);
+  const max = Math.max(...proy);
+  const s = min + (max - min) * Math.min(1, f) + (f >= 1 ? 1 : 0);
+  const L = (max - min) * 3 + 10;
+  const aLonLat = (x: number, y: number): [number, number] => [x / k + lon0, y + lat0];
+  // Rectángulo detrás del frente: de s hacia atrás, con anchura de sobra a los lados.
+  const vx = uy;
+  const vy = -ux;
+  const esquinas = [
+    aLonLat(s * ux + L * vx, s * uy + L * vy),
+    aLonLat(s * ux - L * vx, s * uy - L * vy),
+    aLonLat((s - L) * ux - L * vx, (s - L) * uy - L * vy),
+    aLonLat((s - L) * ux + L * vx, (s - L) * uy + L * vy),
+  ];
+  const rect: PolyClip = [[...esquinas, esquinas[0]]];
+  try {
+    return polygonClipping.intersection(geo, rect);
+  } catch {
+    return null;
+  }
+};
+
+const suave = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+
+// ── Fichas hexagonales de pie ──────────────────────────────────────────────────────
+
+const idFicha = (e: ElemPin) =>
+  ['ficha', e.color, e.fondo ?? 'color', e.icono ?? '', e.imagen ? claveImagen(e.imagen) : ''].map(encodeURIComponent).join('|');
+
+const hexagono = (c: CanvasRenderingContext2D, cx: number, cy: number, r: number) => {
+  c.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const a = (Math.PI / 3) * i - Math.PI / 2; // vértice arriba
+    c[i ? 'lineTo' : 'moveTo'](cx + r * Math.cos(a), cy + r * Math.sin(a));
+  }
+  c.closePath();
+};
+
+const dibujarFicha = (id: string) => {
+  const [, color, fondo, icono, clave] = id.split('|').map(decodeURIComponent);
+  const W = 168;
+  const H = 176;
+  return lienzo(W, H, (c) => {
+    const cx = W / 2;
+    const cy = 84;
+    c.shadowColor = 'rgba(0,0,0,0.35)';
+    c.shadowBlur = 8;
+    c.shadowOffsetY = 4;
+    hexagono(c, cx, cy, 76);
+    c.fillStyle = '#FFFFFF';
+    c.fill();
+    c.shadowColor = 'transparent';
+    hexagono(c, cx, cy, 66);
+    c.fillStyle = fondo === 'blanco' ? '#FFFFFF' : color;
+    c.fill();
+    const img = clave ? imagenes.get(clave) : undefined;
+    if (img) {
+      c.save();
+      hexagono(c, cx, cy, 66);
+      c.clip();
+      const k = Math.max(132 / img.width, 132 / img.height);
+      c.drawImage(img, cx - (img.width * k) / 2, cy - (img.height * k) / 2, img.width * k, img.height * k);
+      c.restore();
+    } else if (icono) {
+      // El icono se pinta como silueta (tinta oscura), como las fichas de la referencia.
+      const t = document.createElement('canvas');
+      t.width = W;
+      t.height = H;
+      const g = t.getContext('2d')!;
+      const corto = [...icono].length <= 2;
+      g.font = corto ? '76px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif' : 'bold 46px Georgia, serif';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillStyle = '#000';
+      g.fillText(icono, cx, cy + 4, 120);
+      g.globalCompositeOperation = 'source-in';
+      g.fillStyle = fondo === 'blanco' ? '#1C2B45' : '#121212';
+      g.fillRect(0, 0, W, H);
+      c.drawImage(t, 0, 0);
+    }
+  });
+};
 
 // ── Imágenes generadas en tiempo de ejecución ──────────────────────────────────────
 
@@ -39,6 +183,7 @@ export const registrarImagenes = (map: MapLibre) => {
         c.fillRect(8, 6, 32, 32);
       }), {pixelRatio: 2, stretchX: [[16, 32]], stretchY: [[14, 30]], content: [12, 10, 36, 34]});
     }
+    if (id.startsWith('ficha|')) map.addImage(id, dibujarFicha(id), {pixelRatio: 2});
   };
   ['mm-flecha', 'mm-papel'].forEach(añadir);
   map.on('styleimagemissing', (e) => añadir(e.id));
@@ -63,6 +208,7 @@ export const aplicarElementos = (map: MapLibre, p: Proyecto, t: number, opts: {s
   const flechas: GeoJSON.Feature[] = [];
   const pins: GeoJSON.Feature[] = [];
   const textos: GeoJSON.Feature[] = [];
+  const territorios: GeoJSON.Feature[] = [];
   const estadoPaises = new Map<string, {color: string; op: number; opBorde: number}>();
 
   for (const e of p.elementos as Elemento[]) {
@@ -101,6 +247,7 @@ export const aplicarElementos = (map: MapLibre, p: Proyecto, t: number, opts: {s
         pins.push({type: 'Feature', geometry: {type: 'Point', coordinates: e.en}, properties: {
           texto: e.texto, color: e.color, estilo: e.estilo, etiqueta: e.etiqueta, op,
           escala: Math.max(0, escala), radioPulso: 8 + ciclo * 28, opPulso: op * 0.55 * (1 - ciclo),
+          ficha: e.estilo === 'ficha' ? idFicha(e) : '', tam: e.tamano ?? 1,
         }});
         break;
       }
@@ -114,8 +261,33 @@ export const aplicarElementos = (map: MapLibre, p: Proyecto, t: number, opts: {s
       case 'zona': {
         const crece = Math.min(1, Math.max(0, (t - e.desde) / Math.max(0.3, e.fundido * 2)));
         const r = e.radioKm * (0.6 + 0.4 * (1 - Math.pow(1 - crece, 3)));
-        zonas.push({type: 'Feature', properties: {color: e.color, op, disc: e.discontinua ? 1 : 0},
-          geometry: {type: 'Polygon', coordinates: [circulo(e.en, r)]}});
+        const disc = e.discontinua ? 1 : 0;
+        const estilo = e.estilo ?? 'area';
+        const anillo = (radio: number, props: Record<string, number | string>) =>
+          zonas.push({type: 'Feature', properties: {color: e.color, op, disc, relleno: 0.18, ...props},
+            geometry: {type: 'Polygon', coordinates: [circulo(e.en, radio)]}});
+        if (estilo === 'objetivo') {
+          // Doble anillo que late, sin relleno.
+          const lat = 1 + 0.08 * Math.sin((t - e.desde) * Math.PI * 2.2);
+          anillo(r * lat, {relleno: 0, disc: 0});
+          anillo(r * 0.55 * lat, {relleno: 0, disc: 0});
+        } else if (estilo === 'radar') {
+          // Alcance translúcido y una onda que sale del centro cada 1,8 s.
+          anillo(r, {relleno: 0.32, disc: 0});
+          const ciclo = (((t - e.desde) % 1.8) + 1.8) % 1.8 / 1.8;
+          anillo(r * ciclo, {relleno: 0.12 * (1 - ciclo), disc: 0, op: op * (1 - ciclo)});
+        } else {
+          anillo(r, {});
+        }
+        break;
+      }
+      case 'territorio': {
+        const f = e.avance > 0 ? suave(Math.min(1, Math.max(0, (t - e.desde) / e.avance))) : 1;
+        const mp = barrido(e.iso, e.direccion, f * e.hasta_fraccion);
+        if (mp && mp.length) {
+          territorios.push({type: 'Feature', properties: {color: e.color, op: op * e.opacidad, borde: oscurecer(e.color, 0.55)},
+            geometry: {type: 'MultiPolygon', coordinates: mp}});
+        }
         break;
       }
     }
@@ -126,6 +298,7 @@ export const aplicarElementos = (map: MapLibre, p: Proyecto, t: number, opts: {s
   fijar(map, 'mm-flechas', fc(flechas));
   fijar(map, 'mm-pins', fc(pins));
   fijar(map, 'mm-textos', fc(textos));
+  fijar(map, 'mm-territorios', fc(territorios));
 
   // Países: feature-state, sin reescribir la geometría (que pesa varios MB).
   const previos = paisesActivos.get(map) ?? new Set<string>();
@@ -133,12 +306,21 @@ export const aplicarElementos = (map: MapLibre, p: Proyecto, t: number, opts: {s
     if (!estadoPaises.has(iso)) map.setFeatureState({source: 'ne-paises', id: iso}, {op: 0, opBorde: 0});
   }
   for (const [iso, s] of estadoPaises) {
-    map.setFeatureState({source: 'ne-paises', id: iso}, {color: s.color, op: s.op, borde: s.color, opBorde: s.opBorde});
+    map.setFeatureState({source: 'ne-paises', id: iso}, {color: s.color, op: s.op, borde: oscurecer(s.color, 0.55), opBorde: s.opBorde});
   }
   paisesActivos.set(map, new Set(estadoPaises.keys()));
 };
 
 export const olvidarEstado = (map: MapLibre) => paisesActivos.delete(map);
+
+/** Mezcla el color con negro: borde del país resaltado, como la tinta del canto. */
+export const oscurecer = (hex: string, k: number) => {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => Math.round(v * (1 - k)));
+  return `#${c.map((v) => v.toString(16).padStart(2, '0')).join('')}`;
+};
 
 const haloPara = (hex: string) => {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex);

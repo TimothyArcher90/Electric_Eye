@@ -8,10 +8,10 @@ import {
   QUALITY_VERY_HIGH,
   WebMOutputFormat,
 } from 'mediabunny';
-import {vistaEn} from './camara';
-import {aplicarElementos, registrarImagenes} from './capas';
+import {type Vista, vistaEn} from './camara';
+import {aplicarElementos, precargarGeometrias, precargarImagenes, registrarImagenes} from './capas';
 import {construirEstilo, paletaDe} from './estilos';
-import {pintarOverlay} from './overlay';
+import {componerMapa, pintarOverlay} from './overlay';
 import type {Proyecto} from './proyecto';
 
 export type Progreso = (hecho: number, total: number, fase: string) => void;
@@ -28,7 +28,7 @@ class Renderizador {
   readonly lienzo: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
 
-  constructor(private p: Proyecto, private anchoCss: number) {
+  constructor(private p: Proyecto, private anchoCss: number, private vistaFija: Vista | null = null) {
     this.cont = document.createElement('div');
     const altoCss = (anchoCss * p.alto) / p.ancho;
     Object.assign(this.cont.style, {
@@ -43,6 +43,7 @@ class Renderizador {
   }
 
   async iniciar() {
+    await Promise.all([precargarImagenes(this.p), precargarGeometrias()]);
     const estilo = await construirEstilo(this.p.estilo, this.p.opciones, this.p.preset);
     this.map = new maplibregl.Map({
       container: this.cont,
@@ -67,30 +68,49 @@ class Renderizador {
   }
 
   async fotograma(t: number) {
-    const v = vistaEn(this.p.camara, t, this.anchoCss);
+    // Sin keyframes, la cámara se queda en la vista del editor.
+    const v = vistaEn(this.p.camara, t, this.anchoCss) ?? this.vistaFija;
     if (v) this.map.jumpTo({center: v.centro, zoom: v.zoom, bearing: v.rumbo, pitch: v.inclinacion});
     aplicarElementos(this.map, this.p, t);
     await this.esperarListo();
     const {ctx, lienzo} = this;
     ctx.fillStyle = paletaDe(this.p.estilo, this.p.preset).espacio;
     ctx.fillRect(0, 0, lienzo.width, lienzo.height);
-    ctx.drawImage(this.map.getCanvas(), 0, 0, lienzo.width, lienzo.height);
+    componerMapa(ctx, this.map.getCanvas(), lienzo.width, lienzo.height, this.p.opciones);
     pintarOverlay(ctx, lienzo.width, lienzo.height, this.p, t);
   }
 
-  private esperarListo() {
-    return new Promise<void>((ok) => {
-      let hecho = false;
-      const fin = () => {
-        if (hecho) return;
-        hecho = true;
-        ok();
-      };
-      this.map.once('idle', fin);
-      this.map.triggerRepaint();
-      // Red caída o tesela que no llega: no bloquear la exportación para siempre.
-      setTimeout(fin, 15000);
-    });
+  private async esperarListo() {
+    const m = this.map;
+    const limite = performance.now() + 30000; // red caída o tesela que no llega: no bloquear para siempre
+    for (;;) {
+      await new Promise<void>((ok) => {
+        let hecho = false;
+        const fin = () => {
+          if (!hecho) {
+            hecho = true;
+            ok();
+          }
+        };
+        m.once('idle', fin);
+        m.triggerRepaint();
+        setTimeout(fin, 4000);
+      });
+      if ((m.loaded() && m.areTilesLoaded()) || performance.now() > limite) break;
+    }
+    // Repintado síncrono: el lienzo refleja el último estado (iconos recién añadidos, datos nuevos).
+    m.redraw();
+  }
+
+  estado() {
+    const m = this.map;
+    const capa = (id: string) => (m.getLayer(id) ? m.queryRenderedFeatures({layers: [id]}).length : -1);
+    return {
+      zoom: m.getZoom(), pitch: m.getPitch(), centro: m.getCenter().toArray(),
+      canvas: [m.getCanvas().width, m.getCanvas().height], pixelRatio: m.getPixelRatio(),
+      fichas: capa('mm-fichas'), territorio: capa('mm-territorio'), ciudades: capa('ciudades-texto-a'),
+      paises: capa('paises-etiquetas'), cargado: m.loaded(),
+    };
   }
 
   destruir() {
@@ -99,8 +119,8 @@ class Renderizador {
   }
 }
 
-export const capturarPNG = async (p: Proyecto, t: number, anchoCss: number): Promise<Blob> => {
-  const r = new Renderizador(p, anchoCss);
+export const capturarPNG = async (p: Proyecto, t: number, anchoCss: number, vista: Vista | null = null): Promise<Blob> => {
+  const r = new Renderizador(p, anchoCss, vista);
   try {
     await r.iniciar();
     await r.fotograma(t);
@@ -111,9 +131,9 @@ export const capturarPNG = async (p: Proyecto, t: number, anchoCss: number): Pro
 };
 
 export const exportarVideo = async (
-  p: Proyecto, anchoCss: number, progreso: Progreso, cancelado: () => boolean,
+  p: Proyecto, anchoCss: number, progreso: Progreso, cancelado: () => boolean, vista: Vista | null = null,
 ): Promise<{blob: Blob; extension: string; codec: string}> => {
-  const r = new Renderizador(p, anchoCss);
+  const r = new Renderizador(p, anchoCss, vista);
   try {
     progreso(0, 1, 'Cargando mapa');
     await r.iniciar();
@@ -149,6 +169,18 @@ export const exportarVideo = async (
     await output.finalize();
     const buf = (output.target as BufferTarget).buffer!;
     return {blob: new Blob([buf], {type: formato.mimeType}), extension: formato.fileExtension, codec};
+  } finally {
+    r.destruir();
+  }
+};
+
+/** Diagnóstico: estado del mapa de exportación tras pintar el fotograma t. */
+export const diagnosticar = async (p: Proyecto, t: number, anchoCss: number) => {
+  const r = new Renderizador(p, anchoCss);
+  try {
+    await r.iniciar();
+    await r.fotograma(t);
+    return r.estado();
   } finally {
     r.destruir();
   }

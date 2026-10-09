@@ -20,12 +20,15 @@ Navegador recomendado: **Chrome o Edge** de escritorio con aceleración por hard
 | Paso | Qué haces |
 |---|---|
 | 1. Encuadre | Elige formato (16:9, 4K, 9:16, 4:5, 1:1, 4:3) y FPS arriba. |
-| 2. Estilo | Documental (papel), Geopolítico (relieve), Noche, Minimal, Satélite o Calles. Activa globo, relieve, terreno 3D, ríos, mares, provincias… |
+| 2. Estilo | **Atlas 3D (geopolítico)**, el registro de los documentales de geopolítica: papel crema, batimetría, relieve grabado, rótulos con serifa tumbados sobre el mapa, profundidad de campo y etalonaje cálido. También Documental (papel), Geopolítico, Realista (montañas), Noche, Minimal, Satélite y Calles. En **Ajustes del estilo**: globo, relieve, terreno 3D, ríos, mares, provincias, grano, viñeta, profundidad y etalonaje. |
 | 3. Cámara | Navega el mapa (arrastrar = mover; clic derecho o Ctrl + arrastrar = girar e inclinar). Pulsa **K** para fijar un keyframe. Mueve el cabezal y repite. La cámara viaja entre keyframes con la curva elegida; **Vuelo** la aleja a mitad de trayecto. |
-| 4. Elementos | Herramientas: **País** (clic en el país), **Ruta** (clics + doble clic), **Pin**, **Texto**, **Zona** (radio en km) y **Título**. Cada elemento tiene su barra en la línea de tiempo: arrástrala o estírala. |
+| 4. Elementos | **País** (resaltado con canto y sombra), **Frente** (el color avanza sobre un país en la dirección que elijas), **Ficha** (hexágono de pie con silueta, texto o retrato subido), **Ruta**, **Pin**, **Texto**, **Zona** (área, objetivo con anillos que laten o radar con onda) y **Título**. Cada elemento tiene su barra en la línea de tiempo: arrástrala o estírala. |
 | 5. Exportar | **Exportar vídeo** renderiza fotograma a fotograma (sin saltos, esperando a que cargue cada tesela) en MP4 (H.264 si el navegador lo soporta; si no, VP9/AV1). **Capturar PNG** saca el fotograma actual a resolución final. |
 
 Atajos: `Espacio` reproducir · `K` keyframe · `←/→` fotograma (con `Shift`, 1 s) · `Supr` borrar · `Ctrl+Z / Ctrl+Y` deshacer y rehacer · `Esc` cancelar · `G` guías de zona segura.
+
+**Logo en pantalla:** panel Proyecto → sube un PNG con transparencia; va abajo a la izquierda y la fuente pasa a la derecha.
+**Tema:** claro y tranquilo por defecto; el botón ◐ cambia a oscuro.
 
 El proyecto se guarda solo en el navegador. **Guardar / Abrir** lo exporta e importa como `.mapa.json`, para versionarlo o compartirlo.
 
@@ -43,7 +46,7 @@ El proceso completo para sacarlo de un vídeo de referencia (fotogramas, ficha t
 | Relieve y terreno 3D | Terrarium (Mapzen / Joerd) en AWS Open Data | Abierta, con atribución |
 | Satélite | Sentinel-2 cloudless **2016** de EOX | CC BY 4.0 (atribución obligatoria) |
 | Calles | OpenFreeMap (datos de OpenStreetMap) | ODbL, atribución "© OpenStreetMap contributors" |
-| Tipografía | Noto Sans (en `public/fonts/`) | SIL Open Font License |
+| Tipografía | Noto Sans, Cinzel y EB Garamond (glifos en `public/fonts/`, generados con `scripts/generar-glifos.py`) | SIL Open Font License |
 
 La atribución de cada estilo aparece en el panel derecho. Ponla en pantalla o en la descripción del vídeo.
 

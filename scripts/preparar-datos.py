@@ -71,9 +71,24 @@ json.dump({'type': 'FeatureCollection', 'features': pts}, open(f'{OUT}/paises-et
           separators=(',', ':'), ensure_ascii=False)
 print('paises-etiquetas', len(pts))
 
+# Natural Earth trae traducciones copiadas por error (Pyongsan → "Pyongyang"): si dos lugares del
+# mismo país comparten nombre traducido, el menos poblado conserva solo su nombre local.
+_pp = json.load(open(f'{RAW}/ne_10m_populated_places.geojson'))
+_mejor = {}
+for f in _pp['features']:
+    pr = f['properties']
+    k = (pr.get('ADM0_A3'), pr.get('NAME_EN'))
+    if pr.get('NAME_EN'):
+        if k not in _mejor or (pr.get('POP_MAX') or 0) > _mejor[k]:
+            _mejor[k] = pr.get('POP_MAX') or 0
+def _traduccion_dudosa(pr):
+    k = (pr.get('ADM0_A3'), pr.get('NAME_EN'))
+    return pr.get('NAME_EN') != pr.get('NAME') and k in _mejor and (pr.get('POP_MAX') or 0) < _mejor[k]
+
 convertir('ne_10m_populated_places', 'ciudades',
           {'NAME_ES': 'nombre', 'NAME_EN': 'nombre_en', 'ADM0NAME': 'pais', 'POP_MAX': 'pob', 'SCALERANK': 'rank'}, 3,
-          extra=lambda p: {'capital': 1 if p.get('ADM0CAP') else 0, 'nombre_local': p.get('NAME')})
+          extra=lambda p: {'capital': 1 if p.get('ADM0CAP') else 0, 'nombre_local': p.get('NAME'),
+                           **({'nombre': p.get('NAME'), 'nombre_en': p.get('NAME')} if _traduccion_dudosa(p) else {})})
 convertir('ne_10m_rivers_lake_centerlines', 'rios', {'name_en': 'nombre', 'scalerank': 'rank', 'min_zoom': 'min_zoom'}, 3,
           filtro=lambda p: (p.get('scalerank') or 99) <= 9)
 convertir('ne_10m_lakes', 'lagos', {'name_es': 'nombre', 'scalerank': 'rank', 'min_label': 'min_label'}, 3,
@@ -81,3 +96,24 @@ convertir('ne_10m_lakes', 'lagos', {'name_es': 'nombre', 'scalerank': 'rank', 'm
 convertir('ne_10m_geography_marine_polys', 'mares', {'name_es': 'nombre', 'name_en': 'nombre_en',
           'scalerank': 'rank', 'min_label': 'min_label', 'featurecla': 'tipo'}, 2)
 convertir('ne_10m_admin_1_states_provinces_lines', 'provincias-lineas', {'ADM0_A3': 'pais'}, 3)
+
+# Un punto de etiqueta por mar (centro de la caja del polígono más grande), para no repetir rótulos.
+d = json.load(open(f'{RAW}/ne_10m_geography_marine_polys.geojson'))
+pts = []
+for f in d['features']:
+    p = f['properties']
+    g = f['geometry']
+    if not g:
+        continue
+    anillos = [g['coordinates'][0]] if g['type'] == 'Polygon' else [pol[0] for pol in g['coordinates']]
+    def area(r):
+        return abs(sum(r[i][0] * r[i + 1][1] - r[i + 1][0] * r[i][1] for i in range(len(r) - 1))) / 2
+    r = max(anillos, key=area)
+    xs = [c[0] for c in r]
+    ys = [c[1] for c in r]
+    pts.append({'type': 'Feature', 'properties': {'nombre': p.get('name_es'), 'nombre_en': p.get('name_en') or p.get('name'),
+                'rank': p.get('scalerank'), 'tipo': p.get('featurecla')},
+                'geometry': {'type': 'Point', 'coordinates': [round((min(xs) + max(xs)) / 2, 3), round((min(ys) + max(ys)) / 2, 3)]}})
+json.dump({'type': 'FeatureCollection', 'features': pts}, open(f'{OUT}/mares-etiquetas.geojson', 'w'),
+          separators=(',', ':'), ensure_ascii=False)
+print('mares-etiquetas', len(pts))

@@ -53,8 +53,14 @@ export type ElemPin = Base & {
   en: LonLat;
   texto: string;
   color: string;
-  estilo: 'punto' | 'pulso' | 'capital';
+  estilo: 'punto' | 'pulso' | 'capital' | 'ficha';
   etiqueta: 'papel' | 'halo' | 'ninguna';
+  /** Ficha hexagonal de pie: emoji o texto corto dentro… */
+  icono?: string;
+  /** …o una imagen (retrato, logo), guardada como data URL pequeña. */
+  imagen?: string;
+  fondo?: 'color' | 'blanco';
+  tamano?: number;
 };
 
 export type ElemTexto = Base & {
@@ -74,6 +80,22 @@ export type ElemZona = Base & {
   radioKm: number;
   color: string;
   discontinua: boolean;
+  /** area = círculo translúcido; objetivo = doble anillo que late; radar = alcance con barrido. */
+  estilo?: 'area' | 'objetivo' | 'radar';
+};
+
+/** Control territorial: el color avanza sobre el país como un frente. */
+export type ElemTerritorio = Base & {
+  tipo: 'territorio';
+  iso: string;
+  color: string;
+  opacidad: number;
+  /** Hacia dónde avanza el frente, en grados (0 = norte, 90 = este). */
+  direccion: number;
+  /** Segundos que tarda en cubrir el país. */
+  avance: number;
+  /** Fracción final cubierta (1 = todo el país). */
+  hasta_fraccion: number;
 };
 
 export type ElemTitulo = Base & {
@@ -83,10 +105,10 @@ export type ElemTitulo = Base & {
   posicion: 'arriba' | 'abajo' | 'centro';
 };
 
-export type Elemento = ElemPais | ElemRuta | ElemPin | ElemTexto | ElemZona | ElemTitulo;
+export type Elemento = ElemPais | ElemRuta | ElemPin | ElemTexto | ElemZona | ElemTitulo | ElemTerritorio;
 export type TipoElemento = Elemento['tipo'];
 
-export type EstiloId = 'documental' | 'geopolitico' | 'realista' | 'noche' | 'satelite' | 'calles' | 'minimal';
+export type EstiloId = 'atlas' | 'documental' | 'geopolitico' | 'realista' | 'noche' | 'satelite' | 'calles' | 'minimal';
 
 export type OpcionesEstilo = {
   relieve: boolean;
@@ -101,6 +123,10 @@ export type OpcionesEstilo = {
   colorearPaises: boolean;
   grano: number; // 0–1
   vineta: number; // 0–1
+  /** Desenfoque de profundidad (tilt-shift) en la parte alta del encuadre, 0–1. */
+  desenfoque: number;
+  /** Etalonaje cálido y plano (negros levantados), 0–1. */
+  etalonaje: number;
   idioma: 'es' | 'en';
 };
 
@@ -132,6 +158,8 @@ export type Proyecto = {
   opciones: OpcionesEstilo;
   fuente: string;
   preset?: PresetEstilo | null;
+  /** Logo o marca de agua en pantalla (data URL), abajo a la izquierda. */
+  marca?: {imagen: string; opacidad: number; tamano: number} | null;
   camara: Keyframe[];
   elementos: Elemento[];
 };
@@ -151,7 +179,17 @@ export const OPCIONES_POR_DEFECTO: OpcionesEstilo = {
   colorearPaises: false,
   grano: 0.35,
   vineta: 0.4,
+  desenfoque: 0,
+  etalonaje: 0,
   idioma: 'es',
+};
+
+/** Ajustes que trae cada estilo al elegirlo (se pueden cambiar después). */
+export const OPCIONES_DE_ESTILO: Partial<Record<EstiloId, Partial<OpcionesEstilo>>> = {
+  atlas: {globo: false, relieve: true, rios: false, colorearPaises: false, grano: 0, vineta: 0.45, desenfoque: 0.6, etalonaje: 0.5},
+  documental: {grano: 0.35, vineta: 0.4, desenfoque: 0, etalonaje: 0},
+  geopolitico: {grano: 0.15, vineta: 0.45, desenfoque: 0.3, etalonaje: 0},
+  realista: {grano: 0.1, vineta: 0.4, desenfoque: 0.3, etalonaje: 0},
 };
 
 export const proyectoNuevo = (): Proyecto => ({
@@ -161,36 +199,43 @@ export const proyectoNuevo = (): Proyecto => ({
   alto: 1080,
   fps: 30,
   duracion: 10,
-  estilo: 'documental',
-  opciones: {...OPCIONES_POR_DEFECTO},
+  estilo: 'atlas',
+  opciones: {...OPCIONES_POR_DEFECTO, ...OPCIONES_DE_ESTILO.atlas},
   fuente: 'Mapa: Natural Earth',
   camara: [],
   elementos: [],
 });
 
-// Proyecto de muestra: el estrecho de Ormuz, para ver todo funcionando al abrir.
+// Proyecto de muestra en estilo Atlas: Golfo Pérsico, país protagonista, frente, fichas y objetivos.
 export const proyectoDemo = (): Proyecto => {
   const p = proyectoNuevo();
-  p.nombre = 'Demo — Estrecho de Ormuz';
-  p.duracion = 12;
+  p.nombre = 'Demo — El Golfo';
+  p.duracion = 14;
+  p.fuente = 'Mapa: Natural Earth · AWS Terrain Tiles';
   p.camara = [
-    {id: uid(), t: 0, centro: [30, 25], zoom: 1.6, rumbo: 0, inclinacion: 0, curva: 'suave', vuelo: false},
-    {id: uid(), t: 3.5, centro: [53, 27], zoom: 4.6, rumbo: 0, inclinacion: 0, curva: 'suave', vuelo: true},
-    {id: uid(), t: 9, centro: [56.2, 26.4], zoom: 6.6, rumbo: -12, inclinacion: 45, curva: 'suave', vuelo: false},
+    {id: uid(), t: 0, centro: [50.5, 27.5], zoom: 3.9, rumbo: 0, inclinacion: 35, curva: 'suave', vuelo: false},
+    {id: uid(), t: 5, centro: [53.8, 27.2], zoom: 4.8, rumbo: -4, inclinacion: 55, curva: 'suave', vuelo: false},
+    {id: uid(), t: 14, centro: [55.6, 26.4], zoom: 5.7, rumbo: -10, inclinacion: 60, curva: 'suave', vuelo: false},
   ];
   p.elementos = [
-    {id: uid(), tipo: 'titulo', nombre: 'Título', texto: 'El estrecho de Ormuz', subtitulo: 'Por aquí pasa el petróleo del Golfo',
-      posicion: 'arriba', desde: 0.4, hasta: 3.2, fundido: 0.4},
-    {id: uid(), tipo: 'pais', nombre: 'Irán', iso: 'IRN', color: '#C44A33', opacidad: 0.55, borde: true, pulso: false,
-      desde: 3.6, hasta: null, fundido: 0.6},
-    {id: uid(), tipo: 'pais', nombre: 'Omán', iso: 'OMN', color: '#C9A84C', opacidad: 0.5, borde: true, pulso: false,
-      desde: 4.2, hasta: null, fundido: 0.6},
+    {id: uid(), tipo: 'titulo', nombre: 'Título', texto: 'El estrecho de Ormuz', subtitulo: 'Por donde sale el petróleo del Golfo',
+      posicion: 'arriba', desde: 0.4, hasta: 3.4, fundido: 0.4},
+    {id: uid(), tipo: 'pais', nombre: 'Irán', iso: 'IRN', color: '#CB8C5B', opacidad: 0.94, borde: true, pulso: false,
+      desde: 1.5, hasta: null, fundido: 0.8},
+    {id: uid(), tipo: 'territorio', nombre: 'Avance en Irak', iso: 'IRQ', color: '#5C844E', opacidad: 0.94, direccion: 330,
+      avance: 4, hasta_fraccion: 0.6, desde: 4, hasta: null, fundido: 0.3},
+    {id: uid(), tipo: 'pin', nombre: 'Ficha 1', en: [47.9, 29.6], texto: '', color: '#5C844E', estilo: 'ficha', etiqueta: 'ninguna',
+      icono: '🪖', fondo: 'color', tamano: 1, desde: 5, hasta: null, fundido: 0.2},
+    {id: uid(), tipo: 'pin', nombre: 'Ficha 2', en: [49.2, 29.0], texto: '', color: '#5C844E', estilo: 'ficha', etiqueta: 'ninguna',
+      icono: '🪖', fondo: 'color', tamano: 1, desde: 5.4, hasta: null, fundido: 0.2},
+    {id: uid(), tipo: 'pin', nombre: 'Flota', en: [58.3, 24.6], texto: '', color: '#FFFFFF', estilo: 'ficha', etiqueta: 'ninguna',
+      icono: '🚢', fondo: 'blanco', tamano: 1, desde: 7, hasta: null, fundido: 0.2},
+    {id: uid(), tipo: 'zona', nombre: 'Objetivo', en: [56.3, 26.6], radioKm: 45, color: '#C74227', discontinua: false, estilo: 'objetivo',
+      desde: 9, hasta: null, fundido: 0.4},
+    {id: uid(), tipo: 'zona', nombre: 'Radar', en: [51.5, 25.3], radioKm: 160, color: '#3FD06A', discontinua: false, estilo: 'radar',
+      desde: 10, hasta: null, fundido: 0.5},
     {id: uid(), tipo: 'ruta', nombre: 'Ruta de petroleros', puntos: [[50.2, 26.7], [54.5, 26.2], [56.4, 26.5], [57.5, 25.2], [60.5, 23]],
-      color: '#B3261E', grosor: 5, discontinua: true, flecha: true, forma: 'recta', trazo: 3, desde: 5.5, hasta: null, fundido: 0.2},
-    {id: uid(), tipo: 'pin', nombre: 'Ormuz', en: [56.3, 26.6], texto: 'ESTRECHO DE ORMUZ', color: '#B3261E', estilo: 'pulso',
-      etiqueta: 'papel', desde: 8.6, hasta: null, fundido: 0.3},
-    {id: uid(), tipo: 'zona', nombre: 'Zona', en: [56.3, 26.5], radioKm: 60, color: '#B3261E', discontinua: true,
-      desde: 9.2, hasta: null, fundido: 0.5},
+      color: '#C74227', grosor: 4, discontinua: true, flecha: true, forma: 'recta', trazo: 3, desde: 8, hasta: null, fundido: 0.2},
   ];
   return p;
 };

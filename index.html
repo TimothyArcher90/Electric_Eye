@@ -34,6 +34,7 @@
       </label>
     </div>
     <div class="grupo derecha">
+      <button id="b-tema" title="Cambiar entre tema claro y oscuro">◐</button>
       <button id="b-png" title="Capturar el fotograma actual a resolución final">Capturar PNG</button>
       <button id="b-exportar" class="primario" title="Renderizar vídeo">Exportar vídeo</button>
     </div>
@@ -48,7 +49,9 @@
     <section>
       <h3>Estilo</h3>
       <div id="estilos" class="estilos"></div>
-      <div id="opciones" class="opciones"></div>
+      <details class="plegable"><summary>Ajustes del estilo</summary>
+        <div id="opciones" class="opciones"></div>
+      </details>
     </section>
     <section>
       <h3>Herramientas</h3>
@@ -64,6 +67,9 @@
   <main class="escenario" id="escenario">
     <div class="marco" id="marco">
       <div id="mapa"></div>
+      <div class="optica dof"></div>
+      <div class="optica lift"></div>
+      <div class="optica calido"></div>
       <canvas id="overlay"></canvas>
       <div class="guias" id="guias"></div>
     </div>
@@ -78,6 +84,9 @@
     <section>
       <h3>Proyecto</h3>
       <label class="campo">Fuente en pantalla<input id="fuente" /></label>
+      <label class="campo">Logo en pantalla (PNG con transparencia)<input id="f-logo" type="file" accept="image/*" /></label>
+      <div class="fila"><label class="campo">Opacidad<input id="logo-op" type="range" min="0" max="1" step="0.05" value="0.9" /></label>
+        <button id="b-quitar-logo">Quitar logo</button></div>
       <p class="ayuda" id="atribucion"></p>
     </section>
   </aside>

@@ -1,6 +1,7 @@
 import {visibilidad} from './geo';
+import {imagenCargada} from './capas';
 import {paletaDe} from './estilos';
-import type {ElemTitulo, Proyecto} from './proyecto';
+import type {ElemTitulo, OpcionesEstilo, Proyecto} from './proyecto';
 
 // Capa 2D encima del mapa: títulos, fuente, grano de película y viñeta.
 // La misma función pinta la vista previa y cada fotograma exportado.
@@ -22,6 +23,62 @@ const texturaRuido = () => {
   }
   ctx.putImageData(img, 0, 0);
   return ruido;
+};
+
+/**
+ * Dibuja el mapa con la óptica del proyecto: etalonaje (saturación y contraste más bajos,
+ * negros levantados en tono cálido) y desenfoque de profundidad arriba y, más suave, abajo.
+ * La vista previa imita lo mismo con CSS (ver aplicarOpticaPrevia).
+ */
+export const componerMapa = (
+  ctx: CanvasRenderingContext2D, fuente: CanvasImageSource, w: number, h: number, o: OpcionesEstilo,
+) => {
+  const e = o.etalonaje ?? 0;
+  ctx.save();
+  ctx.filter = e > 0 ? `saturate(${1 - 0.18 * e}) contrast(${1 - 0.14 * e})` : 'none';
+  ctx.drawImage(fuente, 0, 0, w, h);
+  ctx.restore();
+  const d = o.desenfoque ?? 0;
+  if (d > 0) {
+    const tmp = document.createElement('canvas');
+    tmp.width = w;
+    tmp.height = h;
+    const t = tmp.getContext('2d')!;
+    t.filter = `blur(${(d * h) / 110}px)`;
+    t.drawImage(ctx.canvas, 0, 0);
+    t.filter = 'none';
+    t.globalCompositeOperation = 'destination-in';
+    const g = t.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, 'rgba(0,0,0,1)');
+    g.addColorStop(0.18, 'rgba(0,0,0,0.85)');
+    g.addColorStop(0.36, 'rgba(0,0,0,0)');
+    g.addColorStop(0.82, 'rgba(0,0,0,0)');
+    g.addColorStop(1, 'rgba(0,0,0,0.55)');
+    t.fillStyle = g;
+    t.fillRect(0, 0, w, h);
+    ctx.drawImage(tmp, 0, 0);
+  }
+  if (e > 0) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    ctx.fillStyle = `rgba(46,34,22,${0.8 * e})`;
+    ctx.fillRect(0, 0, w, h);
+    ctx.globalCompositeOperation = 'soft-light';
+    ctx.fillStyle = `rgba(255,231,196,${0.35 * e})`;
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+  }
+};
+
+/** Equivalente aproximado en CSS para la vista previa del editor. */
+export const aplicarOpticaPrevia = (marco: HTMLElement, o: OpcionesEstilo) => {
+  const e = o.etalonaje ?? 0;
+  const d = o.desenfoque ?? 0;
+  marco.style.setProperty('--mm-filtro', e > 0 ? `saturate(${1 - 0.18 * e}) contrast(${1 - 0.14 * e})` : 'none');
+  marco.style.setProperty('--mm-blur', `${(d * marco.clientHeight) / 110}px`);
+  marco.style.setProperty('--mm-dof', d > 0 ? '1' : '0');
+  marco.style.setProperty('--mm-lift', String(0.8 * e));
+  marco.style.setProperty('--mm-calido', String(0.35 * e));
 };
 
 const SANS = '"Inter", "Helvetica Neue", Arial, sans-serif';
@@ -63,8 +120,29 @@ export const pintarOverlay = (ctx: CanvasRenderingContext2D, w: number, h: numbe
     if (op > 0) pintarTitulo(ctx, w, h, u, e, op, p.estilo === 'documental' || p.estilo === 'minimal');
   }
 
+  // Marca de agua (logo) abajo a la izquierda; con logo, la fuente pasa a la derecha.
+  const logo = p.marca?.imagen ? imagenCargada(p.marca.imagen) : undefined;
+  if (logo && p.marca) {
+    const alto = h * 0.11 * (p.marca.tamano || 1);
+    const ancho = (logo.width / logo.height) * alto;
+    ctx.save();
+    ctx.globalAlpha = p.marca.opacidad;
+    ctx.drawImage(logo, 36 * u, h - 30 * u - alto, ancho, alto);
+    ctx.restore();
+  }
+  if (p.fuente && logo) {
+    ctx.save();
+    ctx.font = `italic 600 ${Math.round(22 * u)}px ${SANS}`;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.shadowColor = 'rgba(0,0,0,0.55)';
+    ctx.shadowBlur = 6 * u;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(p.fuente, w - 36 * u, h - 30 * u);
+    ctx.restore();
+  }
   // Fuente (abajo a la izquierda)
-  if (p.fuente) {
+  if (p.fuente && !logo) {
     ctx.save();
     ctx.font = `600 ${Math.round(15 * u)}px ${SANS}`;
     ctx.letterSpacing = `${2 * u}px`;

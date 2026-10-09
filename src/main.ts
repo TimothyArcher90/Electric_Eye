@@ -3,12 +3,12 @@ import './style.css';
 import maplibregl from 'maplibre-gl';
 import {buscar, ciudadCercana} from './buscador';
 import {ordenar, vistaEn} from './camara';
-import {aplicarElementos, borrador, olvidarEstado, registrarImagenes} from './capas';
-import {ATRIBUCION, construirEstilo, NOMBRES_ESTILO, paletaDe, PALETAS} from './estilos';
-import {capturarPNG, exportarVideo} from './exportar';
-import {pintarOverlay} from './overlay';
+import {aplicarElementos, borrador, olvidarEstado, precargarGeometrias, precargarImagenes, registrarImagenes} from './capas';
+import {ATRIBUCION, BANDOS, construirEstilo, NOMBRES_ESTILO, paletaDe, PALETAS} from './estilos';
+import {capturarPNG, diagnosticar, exportarVideo} from './exportar';
+import {aplicarOpticaPrevia, pintarOverlay} from './overlay';
 import {
-  type Elemento, type EstiloId, type Keyframe, type LonLat, normalizar, type OpcionesEstilo, type PresetEstilo, type Proyecto,
+  type Elemento, type EstiloId, OPCIONES_DE_ESTILO, type Keyframe, type LonLat, normalizar, type OpcionesEstilo, type PresetEstilo, type Proyecto,
   proyectoDemo, proyectoNuevo, type TipoElemento, uid,
 } from './proyecto';
 
@@ -18,7 +18,7 @@ let p: Proyecto = cargarGuardado() ?? proyectoDemo();
 let t = 0;
 let reproduciendo = false;
 let sel: {tipo: 'kf' | 'el'; id: string} | null = null;
-type Herramienta = 'navegar' | 'pais' | 'ruta' | 'pin' | 'texto' | 'zona' | 'titulo';
+type Herramienta = 'navegar' | 'pais' | 'territorio' | 'ficha' | 'ruta' | 'pin' | 'texto' | 'zona' | 'titulo';
 let herramienta: Herramienta = 'navegar';
 let puntosRuta: LonLat[] = [];
 const historia: string[] = [];
@@ -159,6 +159,7 @@ function aplicar(moverCamara = true) {
 }
 
 function pintarPrevia() {
+  aplicarOpticaPrevia(marco, p.opciones);
   const ctx = overlay.getContext('2d')!;
   ctx.clearRect(0, 0, overlay.width, overlay.height);
   pintarOverlay(ctx, overlay.width, overlay.height, p, t);
@@ -208,10 +209,10 @@ const tDe = (x: number) => Math.max(0, Math.min(p.duracion, (x / anchoPistas()) 
 const ajustarFps = (s: number) => Math.round(s * p.fps) / p.fps;
 
 const COLOR_TIPO: Record<TipoElemento, string> = {
-  pais: '#8A5CF6', ruta: '#E0402B', pin: '#F59E0B', texto: '#10B981', zona: '#3B82F6', titulo: '#EC4899',
+  pais: '#8A5CF6', ruta: '#E0402B', pin: '#F59E0B', texto: '#10B981', zona: '#3B82F6', titulo: '#EC4899', territorio: '#5C844E',
 };
 const NOMBRE_TIPO: Record<TipoElemento, string> = {
-  pais: 'País', ruta: 'Ruta', pin: 'Pin', texto: 'Texto', zona: 'Zona', titulo: 'Título',
+  pais: 'País', ruta: 'Ruta', pin: 'Pin', texto: 'Texto', zona: 'Zona', titulo: 'Título', territorio: 'Territorio',
 };
 
 function actualizarCabezal() {
@@ -397,7 +398,7 @@ const cRango = (etq: string, v: number, set: (n: number) => void, min: number, m
   i.addEventListener('change', () => cambio(() => set(Number(i.value))));
   return campo(etq, i);
 };
-const MUESTRAS = ['#C44A33', '#B3261E', '#E0402B', '#C9A84C', '#F2C230', '#50B5A2', '#3B82F6', '#73247D', '#1A1A17', '#FFFFFF'];
+const MUESTRAS = ['#CB8C5B', '#5C844E', '#C74227', '#C44A33', '#B3261E', '#E0402B', '#C9A84C', '#F2C230', '#50B5A2', '#3B82F6', '#73247D', '#1A1A17', '#FFFFFF'];
 const cColor = (etq: string, v: string, set: (s: string) => void) => {
   const cont = el('div', {className: 'colores'});
   const i = el('input', {type: 'color', value: v});
@@ -441,6 +442,79 @@ const boton = (txt: string, fn: () => void, clase = '') => {
   const b = el('button', {textContent: txt, className: clase});
   b.addEventListener('click', fn);
   return b;
+};
+
+const ICONOS_FICHA = ['🪖', '✈️', '🚢', '🚀', '💥', '⚓', '☢️', '⭐', '🛢️', '🏭', '⚔️', '🏛️'];
+
+function controlesFicha(e: Extract<Elemento, {tipo: 'pin'}>): HTMLElement[] {
+  const iconos = el('div', {className: 'colores'});
+  for (const ic of ICONOS_FICHA) {
+    const b = el('button', {className: 'emoji' + (e.icono === ic && !e.imagen ? ' activo' : ''), textContent: ic});
+    b.addEventListener('click', () => {
+      cambio(() => {
+        e.icono = ic;
+        e.imagen = undefined;
+      });
+      renderInspector();
+    });
+    iconos.append(b);
+  }
+  const archivo = el('input', {type: 'file', accept: 'image/*'});
+  archivo.addEventListener('change', async () => {
+    const f = archivo.files?.[0];
+    if (!f) return;
+    const url = await reducirImagen(f, 192);
+    cambio(() => (e.imagen = url));
+    await asegurarRecursos();
+    renderInspector();
+  });
+  const quitar = boton('Quitar imagen', () => {
+    cambio(() => (e.imagen = undefined));
+    renderInspector();
+  });
+  return [
+    campo('Icono (silueta)', iconos),
+    cTexto('…o texto corto', e.icono ?? '', (s) => (e.icono = s.slice(0, 4))),
+    campo('…o imagen (retrato, logo)', archivo),
+    ...(e.imagen ? [quitar] : []),
+    fila(
+      cSelect('Fondo', e.fondo ?? 'color', [['color', 'Del color'], ['blanco', 'Blanco']], (v) => (e.fondo = v)),
+      cNum('Tamaño', e.tamano ?? 1, (n) => (e.tamano = Math.max(0.3, Math.min(3, n))), {min: 0.3, max: 3, paso: 0.1}),
+    ),
+  ];
+}
+
+function botonesDireccion(e: Extract<Elemento, {tipo: 'territorio'}>) {
+  const d = el('div', {className: 'botones'});
+  for (const [txt, g] of [['↑ Norte', 0], ['→ Este', 90], ['↓ Sur', 180], ['← Oeste', 270]] as const) {
+    d.append(boton(txt, () => {
+      cambio(() => (e.direccion = g));
+      renderInspector();
+    }));
+  }
+  return d;
+}
+
+/** Reduce una imagen subida a un cuadrado pequeño (el proyecto se guarda como JSON). */
+const reducirImagen = (f: File, lado: number) => new Promise<string>((ok, mal) => {
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement('canvas');
+    const k = Math.min(1, lado / Math.max(img.width, img.height));
+    c.width = Math.round(img.width * k);
+    c.height = Math.round(img.height * k);
+    c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height);
+    ok(c.toDataURL('image/png'));
+    URL.revokeObjectURL(img.src);
+  };
+  img.onerror = mal;
+  img.src = URL.createObjectURL(f);
+});
+
+/** Imágenes y geometrías que el mapa necesita listas antes de pintar. */
+const asegurarRecursos = async () => {
+  await Promise.all([precargarImagenes(p), precargarGeometrias()]);
+  aplicar(false);
 };
 
 function renderInspector() {
@@ -506,9 +580,26 @@ function renderInspector() {
         cTexto('Etiqueta', e.texto, (s) => (e.texto = s)),
         cColor('Color', e.color, (s) => (e.color = s)),
         fila(
-          cSelect('Marcador', e.estilo, [['punto', 'Punto'], ['pulso', 'Pulso'], ['capital', 'Capital']], (v) => (e.estilo = v)),
-          cSelect('Etiqueta', e.etiqueta, [['papel', 'Papel'], ['halo', 'Halo'], ['ninguna', 'Ninguna']], (v) => (e.etiqueta = v)),
+          cSelect('Marcador', e.estilo, [['ficha', 'Ficha de pie'], ['punto', 'Punto'], ['pulso', 'Pulso'], ['capital', 'Capital']], (v) => {
+            e.estilo = v;
+            queueMicrotask(renderInspector);
+          }),
+          cSelect('Etiqueta', e.etiqueta, [['ninguna', 'Ninguna'], ['papel', 'Papel'], ['halo', 'Halo']], (v) => (e.etiqueta = v)),
         ),
+      );
+      if (e.estilo === 'ficha') ins.append(...controlesFicha(e));
+      break;
+    case 'territorio':
+      ins.append(
+        cColor('Color', e.color, (s) => (e.color = s)),
+        cRango('Opacidad', e.opacidad, (n) => (e.opacidad = n), 0, 1, 0.05),
+        cRango(`Dirección del avance (${Math.round(e.direccion)}°)`, e.direccion, (n) => (e.direccion = n), 0, 359, 1),
+        botonesDireccion(e),
+        fila(
+          cNum('Tarda (s)', e.avance, (n) => (e.avance = Math.max(0, n)), {min: 0, paso: 0.1}),
+          cNum('Cubre (%)', Math.round(e.hasta_fraccion * 100), (n) => (e.hasta_fraccion = Math.min(1, Math.max(0, n / 100))), {min: 0, max: 100, paso: 5}),
+        ),
+        el('p', {className: 'ayuda', textContent: `El color avanza sobre ${e.iso} como un frente. Úsalo para mostrar quién gana terreno.`}),
       );
       break;
     case 'texto':
@@ -521,6 +612,7 @@ function renderInspector() {
       break;
     case 'zona':
       ins.append(
+        cSelect('Tipo', e.estilo ?? 'area', [['area', 'Área'], ['objetivo', 'Objetivo (anillos)'], ['radar', 'Radar / alcance']], (v) => (e.estilo = v)),
         cColor('Color', e.color, (s) => (e.color = s)),
         cNum('Radio (km)', e.radioKm, (n) => (e.radioKm = Math.max(1, n)), {min: 1, paso: 5}),
         cCheck('Borde discontinuo', e.discontinua, (b) => (e.discontinua = b)),
@@ -584,8 +676,10 @@ function renderEstilos() {
     b.append(m, el('span', {textContent: NOMBRES_ESTILO[id]}));
     b.addEventListener('click', () => {
       p.estilo = id;
+      Object.assign(p.opciones, OPCIONES_DE_ESTILO[id] ?? {});
       confirmar();
       renderEstilos();
+      renderOpciones();
       recargarEstilo();
     });
     c.append(b);
@@ -641,7 +735,7 @@ function renderOpciones() {
     l.append(i, etq);
     return l;
   };
-  const rango = (etq: string, k: 'grano' | 'vineta' | 'exageracion', min: number, max: number, paso: number, recarga = false) => {
+  const rango = (etq: string, k: 'grano' | 'vineta' | 'exageracion' | 'desenfoque' | 'etalonaje', min: number, max: number, paso: number, recarga = false) => {
     const l = el('label', {className: 'ancho'});
     const i = el('input', {type: 'range', min: String(min), max: String(max), step: String(paso), value: String(o[k])});
     i.addEventListener('input', () => {
@@ -677,13 +771,15 @@ function renderOpciones() {
     recargarEstilo();
   });
   idioma.append(s);
-  c.append(idioma, rango('Grano', 'grano', 0, 1, 0.05), rango('Viñeta', 'vineta', 0, 1, 0.05), rango('Altura 3D', 'exageracion', 0.5, 4, 0.1, true));
+  c.append(idioma, rango('Grano', 'grano', 0, 1, 0.05), rango('Viñeta', 'vineta', 0, 1, 0.05), rango('Profundidad', 'desenfoque', 0, 1, 0.05), rango('Etalonaje', 'etalonaje', 0, 1, 0.05), rango('Altura 3D', 'exageracion', 0.5, 4, 0.1, true));
 }
 
 // ── Herramientas ──────────────────────────────────────────────────────────────────
 const HERRAMIENTAS: [Herramienta, string, string, string][] = [
   ['navegar', '✋', 'Navegar', 'Arrastra para mover. Clic derecho + arrastrar (o Ctrl + arrastrar) para girar e inclinar. Rueda para zoom.'],
   ['pais', '▦', 'País', 'Haz clic en un país para resaltarlo desde el tiempo actual.'],
+  ['territorio', '◧', 'Frente', 'Haz clic en un país: el color avanzará sobre él como un frente (control territorial).'],
+  ['ficha', '⬢', 'Ficha', 'Haz clic para plantar una ficha hexagonal de pie (soldado, avión, barco, retrato…).'],
   ['ruta', '➝', 'Ruta', 'Haz clic para añadir puntos. Doble clic o Intro para terminar. Esc para cancelar.'],
   ['pin', '◉', 'Pin', 'Haz clic donde quieras el pin. Toma el nombre de la ciudad más cercana.'],
   ['texto', 'T', 'Texto', 'Haz clic para colocar un texto sobre el mapa (mares, regiones, cifras).'],
@@ -756,7 +852,21 @@ map.on('click', async (ev) => {
       nuevo({tipo: 'texto', nombre: 'Texto', en, texto: 'Texto', tamano: 26, color: paletaDe(p.estilo, p.preset).etiquetaPais, mayusculas: true, cursiva: false, espaciado: 0.2, desde: t0, hasta: null, fundido: 0.4});
       break;
     case 'zona':
-      nuevo({tipo: 'zona', nombre: 'Zona', en, radioKm: 150, color: acento(), discontinua: true, desde: t0, hasta: null, fundido: 0.5});
+      nuevo({tipo: 'zona', nombre: 'Zona', en, radioKm: 150, color: acento(), discontinua: true, estilo: 'area', desde: t0, hasta: null, fundido: 0.5});
+      break;
+    case 'territorio': {
+      const f = map.queryRenderedFeatures(ev.point, {layers: ['mm-pais-relleno']})[0];
+      const iso = f?.properties?.iso as string | undefined;
+      if (!iso) return avisar('Ahí no hay ningún país.');
+      const nombre = (p.opciones.idioma === 'es' ? f.properties.nombre : f.properties.nombre_en) ?? iso;
+      nuevo({tipo: 'territorio', nombre: `Avance en ${nombre}`, iso, color: BANDOS.aliado, opacidad: 0.92, direccion: 0, avance: 3,
+        hasta_fraccion: 1, desde: t0, hasta: null, fundido: 0.3});
+      await asegurarRecursos();
+      break;
+    }
+    case 'ficha':
+      nuevo({tipo: 'pin', nombre: 'Ficha', en, texto: '', color: BANDOS.aliado, estilo: 'ficha', etiqueta: 'ninguna', icono: '🪖',
+        fondo: 'color', tamano: 1, desde: t0, hasta: null, fundido: 0.2});
       break;
   }
 });
@@ -777,6 +887,10 @@ function terminarRuta() {
 }
 
 // ── Keyframes ─────────────────────────────────────────────────────────────────────
+const vistaActualCamara = () => {
+  const v = vistaActual();
+  return {centro: v.centro, zoom: v.zoom, rumbo: v.rumbo, inclinacion: v.inclinacion};
+};
 const vistaActual = () => {
   const c = map.getCenter();
   return {centro: [+c.lng.toFixed(5), +c.lat.toFixed(5)] as LonLat, zoom: +map.getZoom().toFixed(3), rumbo: +map.getBearing().toFixed(2), inclinacion: +map.getPitch().toFixed(2)};
@@ -853,6 +967,21 @@ $('fuente').addEventListener('input', () => {
   pintarPrevia();
 });
 $('fuente').addEventListener('change', () => confirmar());
+$<HTMLInputElement>('f-logo').addEventListener('change', async (e) => {
+  const f = (e.target as HTMLInputElement).files?.[0];
+  (e.target as HTMLInputElement).value = '';
+  if (!f) return;
+  const url = await reducirImagen(f, 400);
+  cambio(() => (p.marca = {imagen: url, opacidad: Number($<HTMLInputElement>('logo-op').value), tamano: 1}));
+  await asegurarRecursos();
+});
+$<HTMLInputElement>('logo-op').addEventListener('input', () => {
+  if (!p.marca) return;
+  p.marca.opacidad = Number($<HTMLInputElement>('logo-op').value);
+  pintarPrevia();
+});
+$('logo-op').addEventListener('change', () => confirmar());
+$('b-quitar-logo').addEventListener('click', () => cambio(() => (p.marca = null)));
 $('duracion').addEventListener('change', () => cambio(() => {
   p.duracion = Math.max(1, Number($<HTMLInputElement>('duracion').value) || 10);
   t = Math.min(t, p.duracion);
@@ -912,7 +1041,7 @@ $('b-exportar').addEventListener('click', async () => {
   $('modal-titulo').textContent = `Exportando ${p.ancho}×${p.alto} · ${p.fps} fps`;
   const inicio = performance.now();
   try {
-    const r = await exportarVideo(structuredClone(p), anchoMarco(), progreso, () => cancelar);
+    const r = await exportarVideo(structuredClone(p), anchoMarco(), progreso, () => cancelar, vistaActualCamara());
     descargar(r.blob, `${slug(p.nombre)}.${r.extension.replace(/^\./, '')}`);
     avisar(`Vídeo listo (${r.codec.toUpperCase()}, ${(r.blob.size / 1e6).toFixed(1)} MB, ${((performance.now() - inicio) / 1000).toFixed(0)} s)`);
   } catch (e) {
@@ -926,7 +1055,7 @@ $('b-png').addEventListener('click', async () => {
   await estiloCargando;
   avisar('Capturando…');
   try {
-    const b = await capturarPNG(structuredClone(p), t, anchoMarco());
+    const b = await capturarPNG(structuredClone(p), t, anchoMarco(), vistaActualCamara());
     descargar(b, `${slug(p.nombre)}-${t.toFixed(2)}s.png`);
     avisar(`PNG ${p.ancho}×${p.alto} listo`);
   } catch (e) {
@@ -966,6 +1095,26 @@ window.addEventListener('keydown', (e) => {
   else if (e.key.toLowerCase() === 'g') marco.classList.toggle('con-guias');
 });
 
+// Tema de la interfaz: claro por defecto, oscuro opcional (se recuerda en este navegador).
+const aplicarTema = (tema: string) => {
+  if (tema === 'oscuro') document.documentElement.dataset.tema = 'oscuro';
+  else delete document.documentElement.dataset.tema;
+};
+try {
+  aplicarTema(localStorage.getItem('mapas-multimedia:tema') ?? 'claro');
+} catch {
+  /* sin almacenamiento: tema claro */
+}
+$('b-tema').addEventListener('click', () => {
+  const nuevoTema = document.documentElement.dataset.tema === 'oscuro' ? 'claro' : 'oscuro';
+  aplicarTema(nuevoTema);
+  try {
+    localStorage.setItem('mapas-multimedia:tema', nuevoTema);
+  } catch {
+    /* sin almacenamiento */
+  }
+});
+
 $('b-play').addEventListener('click', alternarPlay);
 $('b-inicio').addEventListener('click', () => irA(0));
 $('b-kf').addEventListener('click', añadirKeyframe);
@@ -990,7 +1139,9 @@ ajustarMarco();
 renderLinea();
 recargarEstilo();
 estiloCargando.then(() => irA(0));
+void asegurarRecursos();
 confirmar();
 
 // Acceso para pruebas automatizadas y depuración desde la consola.
-Object.assign(window, {mm: {map, get p() { return p; }, irA, cargarProyecto}});
+Object.assign(window, {mm: {map, get p() { return p; }, get t() { return t; }, irA, cargarProyecto, anchoMarco,
+  diagnosticar: () => diagnosticar(structuredClone(p), t, anchoMarco())}});
