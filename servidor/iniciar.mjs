@@ -2,7 +2,9 @@
 import {execSync, spawn} from 'node:child_process';
 import {dirname, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {createServer} from 'vite';
+import {existsSync, readdirSync, statSync} from 'node:fs';
+import {join} from 'node:path';
+import {build, preview} from 'vite';
 import {iniciarPuente, puenteActivo, PUERTO} from './puente.mjs';
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -58,8 +60,21 @@ if (!(await puenteActivo())) {
     }
   }
 }
-const vite = await createServer({root: RAIZ, server: {port: 5174, host: '127.0.0.1', strictPort: true}});
-await vite.listen();
+// El editor se sirve ya compilado (dist/), no con el servidor de desarrollo: así no depende de cachés que
+// se quedan viejas tras una actualización (la página salía en blanco, sin estilos). Se recompila solo si
+// cambió el código.
+const masReciente = (ruta) => {
+  const st = statSync(ruta);
+  if (!st.isDirectory()) return st.mtimeMs;
+  return Math.max(0, ...readdirSync(ruta).map((f) => masReciente(join(ruta, f))));
+};
+const compilado = join(RAIZ, 'dist', 'index.html');
+const fuentes = ['src', 'index.html', 'package.json', 'vite.config.ts'].map((f) => join(RAIZ, f)).filter(existsSync);
+if (!existsSync(compilado) || Math.max(...fuentes.map(masReciente)) > statSync(compilado).mtimeMs) {
+  console.log('  Preparando el editor (solo tras una actualización, tarda unos segundos)...');
+  await build({root: RAIZ, logLevel: 'error'});
+}
+await preview({root: RAIZ, preview: {port: 5174, host: '127.0.0.1', strictPort: true}, logLevel: 'error'});
 console.log(`\n  Electric Eye listo: ${url}`);
 abrirNavegador();
 console.log('  Deja esta ventana abierta. Si el navegador no se abrió, entra en esa dirección a mano.');
