@@ -154,6 +154,8 @@ const nombre = (o: OpcionesEstilo): ExpressionSpecification =>
 /** Fuentes de datos propias del portal (Natural Earth local + capas del proyecto). */
 const fuentesBase = (): Record<string, SourceSpecification> => ({
   'ne-paises': {type: 'geojson', data: abs('data/paises.geojson'), promoteId: 'iso', tolerance: 0.3},
+  // Mar = mundo menos tierra, con las mismas costas (scripts/generar-oceano.mjs). Tapa el relieve del fondo marino.
+  'ne-oceano': {type: 'geojson', data: abs('data/oceano.geojson'), tolerance: 0.3},
   'ne-etiquetas': {type: 'geojson', data: abs('data/paises-etiquetas.geojson')},
   'ne-ciudades': {type: 'geojson', data: abs('data/ciudades.geojson')},
   'ne-rios': {type: 'geojson', data: abs('data/rios.geojson'), tolerance: 0.5},
@@ -260,6 +262,12 @@ const capasBase = (id: EstiloId, c: Paleta, o: OpcionesEstilo, rampa: [number, s
       // y del fondo marino se desplazan y parece que el fondo "se mueve".
       'hillshade-illumination-anchor': 'map',
     }});
+    // Mar liso: el relieve del fondo marino, con la cámara en movimiento y el desenfoque, parecía agua hirviendo
+    // (se veía barato). Se tapa con el color del mar; en el atlas se deja entrever un poco la batimetría.
+    if (!o.relieveMar && id !== 'satelite') {
+      capas.push({id: 'mar-liso', type: 'fill', source: 'ne-oceano', paint: {
+        'fill-color': c.oceano, 'fill-opacity': id === 'atlas' ? 0.92 : 1, 'fill-antialias': false}});
+    }
   }
 
   if (esVectorPropio) {
