@@ -211,6 +211,25 @@ servidor.registerTool('configurar_estilo', {
   return texto({estilo: q.estilo, opciones: q.opciones, duracion: q.duracion});
 });
 
+servidor.registerTool('cambiar_formato', {
+  title: 'Cambiar formato', description: 'Pasa la pieza a otro formato: 16:9 (horizontal, YouTube), 9:16 (Reel/TikTok/Shorts), 4:5, 1:1, 4:3 o 4K. Al cambiar de orientación adapta la cámara (−0,8 de zoom al pasar a vertical, +0,8 al volver). Después revisa con vista_previa: títulos y fichas deben quedar dentro de la zona segura.',
+  inputSchema: {formato: z.enum(['16:9', '4K', '9:16', '4:5', '1:1', '4:3']), adaptarCamara: z.boolean().default(true)},
+}, async ({formato, adaptarCamara}) => {
+  const p = await proyectoActual();
+  const [ancho, alto] = FORMATOS[formato];
+  const antesVertical = p.alto > p.ancho;
+  const ahoraVertical = alto > ancho;
+  let delta = 0;
+  if (adaptarCamara && antesVertical !== ahoraVertical) {
+    delta = ahoraVertical ? -0.8 : 0.8;
+    for (const k of p.camara) k.zoom = Math.max(0, +(k.zoom + delta).toFixed(3));
+  }
+  p.ancho = ancho;
+  p.alto = alto;
+  await cargar(p);
+  return texto({formato: `${ancho}x${alto}`, zoomAdaptado: delta});
+});
+
 servidor.registerTool('poner_camara', {
   title: 'Poner cámara', description: 'Sustituye los keyframes de cámara. Cada toma: t (s), lugar (nombre) o centro [lon, lat], zoom, rumbo (°), inclinacion (0–75°), curva (suave|lineal|entrada|salida), vuelo (bool).',
   inputSchema: {tomas: z.array(z.object({

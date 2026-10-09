@@ -60,7 +60,7 @@ Ejemplos de órdenes:
 
 - "Mapa de 20 s en 16:9: Irán en naranja, frente verde que entra en Irak desde el sur, flota en el golfo de Omán,
   objetivo que late sobre Bandar Abbas y título 'El estrecho de Ormuz'. Cámara baja hacia Ormuz."
-- "Hazlo vertical para Reels y más lento al final."
+- "Ahora sácame la versión Reel" (pasa a 9:16, adapta la cámara, revisa y exporta).
 - "Pon columnas 3D con la producción de petróleo de Arabia Saudí, Irak e Irán (te paso las cifras)."
 - "Exporta el vídeo."
 
@@ -83,6 +83,7 @@ Para no ocupar el disco C, pon también la carpeta de Electric Eye en D: (por ej
 | `guia_de_direccion` | Reglas de estilo y formato de cada elemento |
 | `buscar_lugar` | Países, ciudades y mares con coordenadas reales (sin conexión) |
 | `nuevo_proyecto` / `configurar_estilo` | Formato, duración, fps, estilo y ajustes |
+| `cambiar_formato` | Pasa la pieza a Reel (9:16) u horizontal (16:9) adaptando la cámara |
 | `poner_camara` | Keyframes de cámara por lugar o coordenadas |
 | `anadir_elementos` / `editar_elemento` / `borrar_elementos` | País, frente, ficha, pin, ruta, texto, zona, título, columna 3D |
 | `ver_estado` | Lo que hay ahora en el editor |
@@ -95,7 +96,7 @@ Para no ocupar el disco C, pon también la carpeta de Electric Eye en D: (por ej
 
 | Paso | Qué haces |
 |---|---|
-| Encuadre | Formato (16:9, 4K, 9:16, 4:5, 1:1, 4:3) y FPS arriba. |
+| Encuadre | Botones **▭ Horizontal** (16:9) y **▯ Reel** (9:16) arriba, o el selector de formato (4K, 4:5, 1:1, 4:3). Al cambiar de orientación la cámara se adapta sola, y en Reel aparece la guía de zona segura (tecla `G`). |
 | Estilo | **Atlas 3D** por defecto; también Documental, Geopolítico, Realista (montañas), Noche, Minimal, Satélite y Calles. **Ajustes del estilo**: globo, relieve, terreno 3D, ríos, mares, provincias, grano, viñeta, profundidad y etalonaje. |
 | Cámara | Navega (arrastrar mueve; clic derecho o Ctrl + arrastrar gira e inclina) y pulsa **K** para fijar un keyframe. |
 | Elementos | País, Frente, Ficha, 3D, Ruta, Pin, Texto, Zona y Título. Cada uno tiene su barra en la línea de tiempo. |

@@ -85,7 +85,10 @@ const SANS = '"Inter", "Helvetica Neue", Arial, sans-serif';
 
 export const pintarOverlay = (ctx: CanvasRenderingContext2D, w: number, h: number, p: Proyecto, t: number) => {
   const pal = paletaDe(p.estilo, p.preset);
-  const u = h / 1080; // unidad relativa: todo escala con la altura del fotograma
+  const u = Math.min(w, h) / 1080; // unidad relativa: escala con el lado corto (vale para 16:9 y 9:16)
+  const vertical = h > w;
+  // En vertical, la interfaz de Reels/TikTok tapa ~14 % arriba y ~22 % abajo: se respeta esa zona.
+  const base = vertical ? h * 0.78 : h - 30 * u;
 
   // Viñeta
   if (p.opciones.vineta > 0) {
@@ -127,7 +130,7 @@ export const pintarOverlay = (ctx: CanvasRenderingContext2D, w: number, h: numbe
     const ancho = (logo.width / logo.height) * alto;
     ctx.save();
     ctx.globalAlpha = p.marca.opacidad;
-    ctx.drawImage(logo, 36 * u, h - 30 * u - alto, ancho, alto);
+    ctx.drawImage(logo, 36 * u, base - alto, ancho, alto);
     ctx.restore();
   }
   if (p.fuente && logo) {
@@ -138,7 +141,7 @@ export const pintarOverlay = (ctx: CanvasRenderingContext2D, w: number, h: numbe
     ctx.shadowBlur = 6 * u;
     ctx.textAlign = 'right';
     ctx.textBaseline = 'bottom';
-    ctx.fillText(p.fuente, w - 36 * u, h - 30 * u);
+    ctx.fillText(p.fuente, w - 36 * u, base);
     ctx.restore();
   }
   // Fuente (abajo a la izquierda)
@@ -151,7 +154,7 @@ export const pintarOverlay = (ctx: CanvasRenderingContext2D, w: number, h: numbe
     ctx.shadowColor = pal.haloPais;
     ctx.shadowBlur = 4 * u;
     ctx.textBaseline = 'bottom';
-    ctx.fillText(p.fuente.toUpperCase(), 36 * u, h - 30 * u);
+    ctx.fillText(p.fuente.toUpperCase(), 36 * u, base);
     ctx.restore();
   }
 };
@@ -163,20 +166,32 @@ const pintarTitulo = (
   const desliz = (1 - entrada) * 24 * u;
   ctx.save();
   ctx.globalAlpha = op;
-  const tam = 58 * u;
-  const tamSub = 26 * u;
-  ctx.font = `800 ${tam}px ${SANS}`;
-  ctx.letterSpacing = `${1 * u}px`;
+  let tam = 58 * u;
+  let tamSub = 26 * u;
   const texto = e.texto.toUpperCase();
-  const anchoT = ctx.measureText(texto).width;
-  ctx.font = `500 ${tamSub}px ${SANS}`;
-  ctx.letterSpacing = '0px';
-  const anchoS = e.subtitulo ? ctx.measureText(e.subtitulo).width : 0;
   const pad = 26 * u;
+  const medir = () => {
+    ctx.font = `800 ${tam}px ${SANS}`;
+    ctx.letterSpacing = `${1 * u}px`;
+    const a = ctx.measureText(texto).width;
+    ctx.font = `500 ${tamSub}px ${SANS}`;
+    ctx.letterSpacing = '0px';
+    return [a, e.subtitulo ? ctx.measureText(e.subtitulo).width : 0];
+  };
+  let [anchoT, anchoS] = medir();
+  // Si no cabe (típico en 9:16), la letra se reduce hasta ocupar como mucho el 88 % del ancho.
+  const k = Math.min(1, (w * 0.88 - pad * 2) / Math.max(1, anchoT, anchoS));
+  if (k < 1) {
+    tam *= k;
+    tamSub *= k;
+    [anchoT, anchoS] = medir();
+  }
   const anchoCaja = Math.max(anchoT, anchoS) + pad * 2;
   const altoCaja = tam * 1.15 + (e.subtitulo ? tamSub * 1.6 : 0) + pad * 1.4;
   const x = (w - anchoCaja) / 2;
-  const y = e.posicion === 'arriba' ? h * 0.08 : e.posicion === 'abajo' ? h * 0.92 - altoCaja : (h - altoCaja) / 2;
+  const vertical = h > w;
+  const y = e.posicion === 'arriba' ? h * (vertical ? 0.15 : 0.08)
+    : e.posicion === 'abajo' ? h * (vertical ? 0.76 : 0.92) - altoCaja : (h - altoCaja) / 2;
 
   ctx.translate(w / 2, y + altoCaja / 2 + (e.posicion === 'abajo' ? desliz : -desliz));
   if (papel) ctx.rotate((-1.2 * Math.PI) / 180);

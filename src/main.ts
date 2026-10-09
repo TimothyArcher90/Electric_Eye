@@ -2,14 +2,14 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import './style.css';
 import maplibregl from 'maplibre-gl';
 import {buscar, ciudadCercana} from './buscador';
-import {ordenar, vistaEn} from './camara';
+import {desfaseZoom, ordenar, vistaEn} from './camara';
 import {aplicarElementos, borrador, olvidarEstado, precargarGeometrias, precargarImagenes, registrarImagenes} from './capas';
 import {ATRIBUCION, BANDOS, construirEstilo, NOMBRES_ESTILO, paletaDe, PALETAS} from './estilos';
 import {capturarPNG, diagnosticar, exportarVideo} from './exportar';
 import {aplicarOpticaPrevia, pintarOverlay} from './overlay';
 import {iniciarPuente, subirArchivo} from './puente';
 import {
-  type Elemento, type EstiloId, OPCIONES_DE_ESTILO, type Keyframe, type LonLat, normalizar, type OpcionesEstilo, type PresetEstilo, type Proyecto,
+  cambiarFormato, type Elemento, type EstiloId, OPCIONES_DE_ESTILO, type Keyframe, type LonLat, normalizar, type OpcionesEstilo, type PresetEstilo, type Proyecto,
   proyectoDemo, proyectoNuevo, type TipoElemento, uid,
 } from './proyecto';
 
@@ -147,12 +147,13 @@ const ajustarMarco = () => {
 new ResizeObserver(ajustarMarco).observe($('escenario'));
 
 const anchoMarco = () => marco.getBoundingClientRect().width;
+const desfase = () => desfaseZoom(marco.getBoundingClientRect().height);
 
 // ── Aplicar el proyecto al tiempo t ────────────────────────────────────────────────
 function aplicar(moverCamara = true) {
   if (moverCamara && ($<HTMLInputElement>('seguir').checked || reproduciendo)) {
     const v = vistaEn(p.camara, t, anchoMarco());
-    if (v) map.jumpTo({center: v.centro, zoom: v.zoom, bearing: v.rumbo, pitch: v.inclinacion});
+    if (v) map.jumpTo({center: v.centro, zoom: v.zoom + desfase(), bearing: v.rumbo, pitch: v.inclinacion});
   }
   if (map.getSource('mm-rutas')) aplicarElementos(map, p, t, {seleccion: sel?.tipo === 'el' ? sel.id : null});
   pintarPrevia();
@@ -174,7 +175,7 @@ const fmt = (s: number) => {
 
 function actualizarHud() {
   const c = map.getCenter();
-  $('hud').textContent = `${c.lng.toFixed(3)}, ${c.lat.toFixed(3)} · zoom ${map.getZoom().toFixed(2)} · rumbo ${map.getBearing().toFixed(0)}° · incl. ${map.getPitch().toFixed(0)}°`;
+  $('hud').textContent = `${c.lng.toFixed(3)}, ${c.lat.toFixed(3)} · zoom ${(map.getZoom() - desfase()).toFixed(2)} · rumbo ${map.getBearing().toFixed(0)}° · incl. ${map.getPitch().toFixed(0)}°`;
 }
 
 // ── Reproducción ──────────────────────────────────────────────────────────────────
@@ -909,7 +910,7 @@ const vistaActualCamara = () => {
 };
 const vistaActual = () => {
   const c = map.getCenter();
-  return {centro: [+c.lng.toFixed(5), +c.lat.toFixed(5)] as LonLat, zoom: +map.getZoom().toFixed(3), rumbo: +map.getBearing().toFixed(2), inclinacion: +map.getPitch().toFixed(2)};
+  return {centro: [+c.lng.toFixed(5), +c.lat.toFixed(5)] as LonLat, zoom: +(map.getZoom() - desfase()).toFixed(3), rumbo: +map.getBearing().toFixed(2), inclinacion: +map.getPitch().toFixed(2)};
 };
 function añadirKeyframe() {
   const tk = ajustarFps(t);
@@ -937,7 +938,7 @@ inpBuscar.addEventListener('input', async () => {
     const li = el('li');
     li.append(el('span', {textContent: r.nombre}), el('small', {textContent: r.detalle}));
     li.addEventListener('click', () => {
-      map.flyTo({center: r.en, zoom: r.zoom, speed: 1.6, essential: true});
+      map.flyTo({center: r.en, zoom: r.zoom + desfase(), speed: 1.6, essential: true});
       ul.innerHTML = '';
       inpBuscar.value = r.nombre;
     });
@@ -975,6 +976,9 @@ function sincronizarCabecera() {
   const v = `${p.ancho}x${p.alto}`;
   if (![...fs.options].some((o) => o.value === v)) fs.append(el('option', {value: v, textContent: v}));
   fs.value = v;
+  $('b-horizontal').classList.toggle('activo', p.ancho > p.alto);
+  $('b-reel').classList.toggle('activo', p.alto > p.ancho);
+  marco.classList.toggle('vertical', p.alto > p.ancho);
 }
 
 $('nombre').addEventListener('change', () => cambio(() => (p.nombre = $<HTMLInputElement>('nombre').value)));
@@ -1003,14 +1007,23 @@ $('duracion').addEventListener('change', () => cambio(() => {
   t = Math.min(t, p.duracion);
 }, true));
 $('fps').addEventListener('change', () => cambio(() => (p.fps = Number($<HTMLSelectElement>('fps').value))));
+const aplicarFormato = (w: number, h: number) => {
+  let d = 0;
+  cambio(() => (d = cambiarFormato(p, w, h)));
+  sincronizarCabecera();
+  ajustarMarco();
+  if (h > w) marco.classList.add('con-guias');
+  aplicar(true);
+  renderLinea();
+  renderInspector();
+  if (d) avisar(`Formato ${w}×${h} · cámara adaptada (zoom ${d > 0 ? '+' : ''}${d})`);
+};
 $('formato').addEventListener('change', () => {
   const [w, h] = $<HTMLSelectElement>('formato').value.split('x').map(Number);
-  cambio(() => {
-    p.ancho = w;
-    p.alto = h;
-  });
-  ajustarMarco();
+  aplicarFormato(w, h);
 });
+$('b-horizontal').addEventListener('click', () => aplicarFormato(1920, 1080));
+$('b-reel').addEventListener('click', () => aplicarFormato(1080, 1920));
 $('b-nuevo').addEventListener('click', () => {
   if (confirm('¿Empezar un proyecto nuevo? El actual se puede recuperar con Ctrl+Z.')) cargarProyecto(proyectoNuevo());
 });
@@ -1191,7 +1204,7 @@ iniciarPuente(async (accion, d) => {
       irA(Number(d.t ?? 0));
       return {t};
     case 'mirar':
-      map.jumpTo({center: d.centro as LonLat, zoom: Number(d.zoom), bearing: Number(d.rumbo ?? 0), pitch: Number(d.inclinacion ?? 0)});
+      map.jumpTo({center: d.centro as LonLat, zoom: Number(d.zoom) + desfase(), bearing: Number(d.rumbo ?? 0), pitch: Number(d.inclinacion ?? 0)});
       return vistaActual();
     case 'capturar': {
       await estiloCargando;

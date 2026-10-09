@@ -254,6 +254,25 @@ export const proyectoDemo = (): Proyecto => {
   return p;
 };
 
+/**
+ * Cambia el formato del proyecto. Si cambia la orientación (horizontal ↔ vertical), la cámara se
+ * adapta: en vertical el encuadre es mucho más estrecho, así que se aleja 0,8 de zoom para que el
+ * protagonista siga entrando (y se acerca al volver a horizontal).
+ */
+export const DELTA_ZOOM_ORIENTACION = 0.8;
+export const cambiarFormato = (p: Proyecto, ancho: number, alto: number, adaptarCamara = true) => {
+  const antesVertical = p.alto > p.ancho;
+  const ahoraVertical = alto > ancho;
+  p.ancho = ancho;
+  p.alto = alto;
+  if (adaptarCamara && antesVertical !== ahoraVertical) {
+    const d = ahoraVertical ? -DELTA_ZOOM_ORIENTACION : DELTA_ZOOM_ORIENTACION;
+    for (const k of p.camara) k.zoom = Math.max(0, +(k.zoom + d).toFixed(3));
+    return d;
+  }
+  return 0;
+};
+
 export const normalizar = (p: Partial<Proyecto>): Proyecto => {
   const base = proyectoNuevo();
   return {

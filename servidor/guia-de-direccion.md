@@ -45,6 +45,17 @@ y entregas una pieza que se lea a la primera. Estilo por defecto: **atlas** (atl
 - `vuelo: true` solo para saltos largos entre regiones.
 - Deriva lenta entre tomas cercanas (mismo centro, +0,3 de zoom): da vida sin marear.
 
+## Horizontal y Reel
+
+- **16:9 (horizontal)** para YouTube y vídeo largo. **9:16 (Reel)** para Instagram, TikTok y Shorts.
+- Para tener las dos versiones: dirige primero una, guárdala (`guardar_proyecto`), pásala con `cambiar_formato`,
+  revisa con `vista_previa`, retoca y exporta otra vez.
+- En 9:16 el encuadre es estrecho: zoom unos 0,8 más lejos que en horizontal (lo hace `cambiar_formato`), la acción
+  en el tercio central, fichas en columna o diagonal y no en línea larga horizontal, y títulos de 2–4 palabras.
+- Zona segura en 9:16: nada importante en el 14 % de arriba ni en el 22 % de abajo (lo tapa la interfaz de la app).
+  Los títulos y la fuente ya se colocan dentro; tú cuida que países, fichas y rótulos clave queden en el centro.
+- En 9:16 la inclinación puede subir a 60–70°: el horizonte arriba da profundidad en vertical.
+
 ## Formatos de elemento
 
 ```jsonc

@@ -8,7 +8,7 @@ import {
   QUALITY_VERY_HIGH,
   WebMOutputFormat,
 } from 'mediabunny';
-import {type Vista, vistaEn} from './camara';
+import {desfaseZoom, type Vista, vistaEn} from './camara';
 import {aplicarElementos, precargarGeometrias, precargarImagenes, registrarImagenes} from './capas';
 import {construirEstilo, paletaDe} from './estilos';
 import {componerMapa, pintarOverlay} from './overlay';
@@ -70,7 +70,7 @@ class Renderizador {
   async fotograma(t: number) {
     // Sin keyframes, la cámara se queda en la vista del editor.
     const v = vistaEn(this.p.camara, t, this.anchoCss) ?? this.vistaFija;
-    if (v) this.map.jumpTo({center: v.centro, zoom: v.zoom, bearing: v.rumbo, pitch: v.inclinacion});
+    if (v) this.map.jumpTo({center: v.centro, zoom: v.zoom + desfaseZoom((this.anchoCss * this.p.alto) / this.p.ancho), bearing: v.rumbo, pitch: v.inclinacion});
     aplicarElementos(this.map, this.p, t);
     await this.esperarListo();
     const {ctx, lienzo} = this;

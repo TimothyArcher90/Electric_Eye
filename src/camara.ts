@@ -3,6 +3,14 @@ import type {Curva, Keyframe, LonLat} from './proyecto';
 
 export type Vista = {centro: LonLat; zoom: number; rumbo: number; inclinacion: number};
 
+/**
+ * Los zooms del proyecto son "de referencia": los de un encuadre de 540 px CSS de alto.
+ * Al pintar en un encuadre de otra altura (otra pantalla, vista previa, exportación) se
+ * corrige con este desfase, así el proyecto se ve igual en cualquier ordenador y formato.
+ */
+export const ALTO_REFERENCIA = 540;
+export const desfaseZoom = (altoCss: number) => Math.log2(Math.max(1, altoCss) / ALTO_REFERENCIA);
+
 const CURVAS: Record<Curva, (x: number) => number> = {
   lineal: (x) => x,
   suave: (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2),

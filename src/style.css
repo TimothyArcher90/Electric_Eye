@@ -114,6 +114,12 @@ h3 { margin: 0 0 9px; font-size: 11px; text-transform: uppercase; letter-spacing
 .optica.lift { background: rgb(46,34,22); mix-blend-mode: screen; opacity: var(--mm-lift, 0); }
 .optica.calido { background: rgb(255,231,196); mix-blend-mode: soft-light; opacity: var(--mm-calido, 0); }
 #overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.segmento { display: flex; border: 1px solid var(--borde); border-radius: 7px; overflow: hidden; }
+.segmento button { border: 0; border-radius: 0; background: var(--panel); }
+.segmento button + button { border-left: 1px solid var(--borde); }
+.segmento button.activo { background: var(--seleccion); color: var(--acento); font-weight: 600; }
+/* En vertical, la guía marca la zona segura de Reels/TikTok (arriba y abajo los tapa la interfaz). */
+.marco.vertical .guias { inset: 14% 6% 22% 6%; }
 .guias { position: absolute; inset: 5%; border: 1px dashed rgba(255,255,255,.18); pointer-events: none; display: none; }
 .marco.con-guias .guias { display: block; }
 .hud { position: absolute; left: 12px; bottom: 10px; color: var(--tenue); font: 11px ui-monospace, Menlo, monospace; background: #0009; padding: 4px 8px; border-radius: 5px; pointer-events: none; }
