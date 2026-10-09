@@ -773,6 +773,7 @@ function renderOpciones() {
     chk('Colorear países', 'colorearPaises'),
     chk('Nombres de países', 'etiquetasPaises'),
     chk('Solo rótulos de la historia', 'soloHistoria'),
+    chk('Desenfoque de movimiento (render ×3)', 'desenfoqueMovimiento'),
     chk('Ciudades', 'ciudades'),
     chk('Ríos', 'rios'),
     chk('Mares', 'mares'),

@@ -63,6 +63,8 @@ Taiwán), su nombre puede quedar fuera. Si debe leerse, añade un `texto` con el
 - Rumbo: −15° a 15° para dar vida, sin girar más de 20° entre tomas.
 - Ritmo: una toma cada 3–6 s; la cámara llega **antes** de que aparezca el elemento (0,3–0,8 s).
 - `vuelo: true` solo para saltos largos entre regiones.
+- Para la versión final de una pieza con movimientos rápidos, `configurar_estilo({opciones: {desenfoqueMovimiento: true}})`
+  da desenfoque de movimiento de cine (el render tarda el triple: avísalo).
 - Deriva lenta entre tomas cercanas (mismo centro, +0,3 de zoom): da vida sin marear.
 - Las tomas con curva `suave` forman una sola trayectoria continua (la cámara no se para en cada una). Para un
   movimiento de cine bastan 3–5 tomas bien separadas; si quieres una pausa real, repite la misma toma dos veces.

@@ -149,6 +149,8 @@ export type OpcionesEstilo = {
   desenfoque: number;
   /** Etalonaje cálido y plano (negros levantados), 0–1. */
   etalonaje: number;
+  /** Desenfoque de movimiento de cine (3 vistas por fotograma; el render tarda el triple). */
+  desenfoqueMovimiento?: boolean;
   idioma: 'es' | 'en';
 };
 

@@ -175,6 +175,9 @@ export const exportarVideo = async (
     mini.height = Math.max(1, Math.round((64 * p.alto) / p.ancho));
     const mctx = mini.getContext('2d', {willReadFrequently: true})!;
     let previo: Uint8ClampedArray | null = null;
+    const sub = p.opciones.desenfoqueMovimiento ? 3 : 1;
+    const acum = sub > 1 ? Object.assign(document.createElement('canvas'), {width: p.ancho, height: p.alto}) : null;
+    const actx = acum?.getContext('2d');
     const cambios: number[] = [];
     for (let i = 0; i < total; i++) {
       if (cancelado()) {
@@ -183,7 +186,20 @@ export const exportarVideo = async (
       }
       const t = i / p.fps;
       const a = performance.now();
-      await r.fotograma(t);
+      if (sub > 1) {
+        // Desenfoque de movimiento: varias vistas dentro del tiempo de obturación (medio fotograma) promediadas,
+        // como la cámara de cine a 180°.
+        for (let k = 0; k < sub; k++) {
+          await r.fotograma(Math.max(0, t + ((k + 0.5) / sub - 0.5) * (0.5 / p.fps)));
+          actx!.globalAlpha = 1 / (k + 1);
+          actx!.drawImage(r.lienzo, 0, 0);
+        }
+        const lctx = r.lienzo.getContext('2d')!;
+        lctx.globalAlpha = 1;
+        lctx.drawImage(acum!, 0, 0);
+      } else {
+        await r.fotograma(t);
+      }
       mctx.drawImage(r.lienzo, 0, 0, mini.width, mini.height);
       const px = mctx.getImageData(0, 0, mini.width, mini.height).data;
       if (previo) {
