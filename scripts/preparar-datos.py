@@ -51,10 +51,14 @@ def iso(p):
         a3 = p.get('ADM0_A3')
     return a3
 
+# Nombres comunes en español donde Natural Earth usa el oficial.
+NOMBRE_COMUN = {'TWN': 'Taiwán'}
+
 PAISES = {'NAME': 'nombre_en', 'NAME_ES': 'nombre', 'MAPCOLOR7': 'mc7', 'MAPCOLOR9': 'mc9',
           'MIN_LABEL': 'min_label', 'LABELRANK': 'rank'}
-convertir('ne_10m_admin_0_countries', 'paises', PAISES, 3, extra=lambda p: {'iso': iso(p)})
-convertir('ne_50m_admin_0_countries', 'paises-50m', PAISES, 3, extra=lambda p: {'iso': iso(p)})
+_extra_pais = lambda p: {'iso': iso(p), **({'nombre': NOMBRE_COMUN[iso(p)]} if iso(p) in NOMBRE_COMUN else {})}
+convertir('ne_10m_admin_0_countries', 'paises', PAISES, 3, extra=_extra_pais)
+convertir('ne_50m_admin_0_countries', 'paises-50m', PAISES, 3, extra=_extra_pais)
 
 # Puntos de etiqueta de cada país (Natural Earth trae LABEL_X/LABEL_Y bien colocados).
 d = json.load(open(f'{RAW}/ne_10m_admin_0_countries.geojson'))
@@ -64,7 +68,7 @@ for f in d['features']:
     if p.get('LABEL_X') is None:
         continue
     pts.append({'type': 'Feature',
-                'properties': {'nombre': p.get('NAME_ES') or p.get('NAME'), 'nombre_en': p.get('NAME'),
+                'properties': {'nombre': NOMBRE_COMUN.get(iso(p)) or p.get('NAME_ES') or p.get('NAME'), 'nombre_en': p.get('NAME'),
                                'iso': iso(p), 'min_label': p.get('MIN_LABEL', 3), 'rank': p.get('LABELRANK', 5)},
                 'geometry': {'type': 'Point', 'coordinates': [round(p['LABEL_X'], 3), round(p['LABEL_Y'], 3)]}})
 json.dump({'type': 'FeatureCollection', 'features': pts}, open(f'{OUT}/paises-etiquetas.geojson', 'w'),

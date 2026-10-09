@@ -374,8 +374,9 @@ const capasEtiquetas = (id: EstiloId, c: Paleta, o: OpcionesEstilo, rot: NonNull
       'text-size': ['interpolate', ['linear'], ['zoom'],
         1, ['*', (rot.escala ?? 1) * (atlas ? 1.25 : 1), ['-', 12, ['/', ['get', 'rank'], 2]]],
         4, ['*', (rot.escala ?? 1) * (atlas ? 1.5 : 1), ['-', 18, ['/', ['get', 'rank'], 2]]],
-        7, 24 * (rot.escala ?? 1) * (atlas ? 1.8 : 1)],
-      'text-letter-spacing': rot.espaciado ?? (atlas ? 0.38 : 0.14), 'text-max-width': atlas ? 12 : 7,
+        // A zoom alto, los países pequeños (Taiwán, Hong Kong) no deben tapar la isla con un rótulo enorme.
+        7, ['*', (rot.escala ?? 1) * (atlas ? 1.5 : 1), ['-', 26, ['*', 2, ['get', 'rank']]]]],
+      'text-letter-spacing': rot.espaciado ?? (atlas ? 0.38 : 0.14), 'text-max-width': atlas ? 16 : 7,
       'symbol-sort-key': ['coalesce', ['get', 'min_label'], 5], 'text-padding': 6},
     paint: atlas
       ? {'text-color': c.etiquetaPais, 'text-halo-color': c.haloPais, 'text-halo-width': 0.8, 'text-halo-blur': 1}
