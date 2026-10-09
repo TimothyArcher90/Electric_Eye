@@ -64,6 +64,15 @@ export const PALETAS: Record<EstiloId, Paleta> = {
     politico: ['#B9A97F', '#A9AE86', '#BFA58D', '#9FA78D', '#B4B08A', '#AE9D7E', '#C1B193'],
     acento: '#E0402B',
   },
+  // Realista: color por altitud (verde → ocre → roca → nieve) y batimetría, sobre relieve fuerte.
+  realista: {
+    espacio: '#070B12', oceano: '#2C5A7C', tierra: '#6E8A55', frontera: 'rgba(255,250,235,0.9)', costa: 'rgba(0,0,0,0)',
+    provincia: 'rgba(255,250,235,0.4)', rio: '#4F87AE', lago: '#3E7398',
+    etiquetaPais: '#FFFFFF', haloPais: 'rgba(10,16,24,0.75)', ciudad: '#F2C230', ciudadTexto: '#FFFFFF',
+    haloCiudad: 'rgba(10,16,24,0.8)', mar: '#CFE3F2', sombra: '#1E1A14', luz: '#FFFDF5', intensidadRelieve: 0.75,
+    politico: ['rgba(0,0,0,0)'],
+    acento: '#E0402B',
+  },
   // Noche: Warm Black de MacroWise, acentos en oro.
   noche: {
     espacio: '#0F0F0D', oceano: '#161614', tierra: '#2A2924', frontera: '#5A574D', costa: '#3A3832',
@@ -103,6 +112,7 @@ export const PALETAS: Record<EstiloId, Paleta> = {
 export const NOMBRES_ESTILO: Record<EstiloId, string> = {
   documental: 'Documental (papel)',
   geopolitico: 'Geopolítico (relieve)',
+  realista: 'Realista (montañas)',
   noche: 'Noche',
   minimal: 'Minimal',
   satelite: 'Satélite',
@@ -143,6 +153,13 @@ const fuentesRelieve = (): Record<string, SourceSpecification> => ({
   'dem-3d': {type: 'raster-dem', tiles: [FUENTES.terreno], encoding: 'terrarium', tileSize: 256, maxzoom: 13},
 });
 
+// Rampa hipsométrica (m): fondo marino, costa, llanura, meseta, montaña, nieve.
+const RAMPA_ALTITUD: [number, string][] = [
+  [-8000, '#0A2238'], [-4000, '#123A5C'], [-1000, '#1F5680'], [-150, '#2F6E98'], [-1, '#4B8DB5'],
+  [0, '#5E7F4C'], [150, '#6E8A55'], [500, '#8E9A62'], [1000, '#B3A673'], [1800, '#A88C66'],
+  [2600, '#8B7460'], [3500, '#9C8F84'], [4600, '#ADA398'], [5300, '#D6D1CA'], [6200, '#FFFFFF'],
+];
+
 /** Capas cartográficas del mapa base (debajo de las anotaciones). */
 const capasBase = (id: EstiloId, c: Paleta, o: OpcionesEstilo): LayerSpecification[] => {
   const capas: LayerSpecification[] = [];
@@ -152,6 +169,14 @@ const capasBase = (id: EstiloId, c: Paleta, o: OpcionesEstilo): LayerSpecificati
     capas.push({id: 'oceano', type: 'background', paint: {'background-color': c.oceano}});
     if (id === 'satelite') {
       capas.push({id: 'satelite', type: 'raster', source: 'sat', paint: {'raster-saturation': -0.1, 'raster-contrast': 0.08}});
+    } else if (id === 'realista') {
+      // Sin red, al menos se ve la tierra; con red, la altitud colorea mar y montaña.
+      capas.push({id: 'tierra', type: 'fill', source: 'ne-paises', paint: {'fill-color': c.tierra}});
+      capas.push({id: 'altitud', type: 'color-relief', source: 'dem-sombra', paint: {
+        'color-relief-color': ['interpolate', ['linear'], ['elevation'],
+          ...RAMPA_ALTITUD.flatMap(([m, col]) => [m, col])] as unknown as ExpressionSpecification,
+        'color-relief-opacity': 1,
+      }} as LayerSpecification);
     } else {
       capas.push({id: 'tierra', type: 'fill', source: 'ne-paises', paint: {'fill-color': c.tierra, 'fill-antialias': true}});
       if (o.colorearPaises) {
@@ -174,8 +199,9 @@ const capasBase = (id: EstiloId, c: Paleta, o: OpcionesEstilo): LayerSpecificati
     capas.push({id: 'lagos', type: 'fill', source: 'ne-lagos', paint: {'fill-color': c.lago}});
   }
 
-  if (o.relieve) {
+  if (o.relieve || id === 'realista') {
     capas.push({id: 'relieve', type: 'hillshade', source: 'dem-sombra', paint: {
+      'hillshade-method': id === 'realista' ? 'multidirectional' : 'standard',
       'hillshade-exaggeration': c.intensidadRelieve,
       'hillshade-shadow-color': c.sombra,
       'hillshade-highlight-color': c.luz,
@@ -256,10 +282,12 @@ const capasEtiquetas = (id: EstiloId, c: Paleta, o: OpcionesEstilo): LayerSpecif
       paint: {'text-color': c.mar, 'text-halo-color': 'rgba(0,0,0,0)'}});
   }
   if (o.etiquetasPaises) {
-    capas.push({id: 'paises-etiquetas', type: 'symbol', source: 'ne-etiquetas', layout: {
+    // Fuera bases militares, glaciares y territorios diminutos (min_label ≥ 6 en Natural Earth).
+    capas.push({id: 'paises-etiquetas', type: 'symbol', source: 'ne-etiquetas',
+      filter: ['<', ['coalesce', ['get', 'min_label'], 5], 6], layout: {
       'text-field': ['upcase', nombre(o)], 'text-font': FUENTE_MEDIA,
       'text-size': ['interpolate', ['linear'], ['zoom'], 1, ['-', 12, ['/', ['get', 'rank'], 2]], 4, ['-', 18, ['/', ['get', 'rank'], 2]], 7, 24],
-      'text-letter-spacing': 0.14, 'text-max-width': 7, 'symbol-sort-key': ['get', 'rank'],
+      'text-letter-spacing': 0.14, 'text-max-width': 7, 'symbol-sort-key': ['coalesce', ['get', 'min_label'], 5],
       'text-padding': 6},
     paint: {'text-color': c.etiquetaPais, 'text-halo-color': c.haloPais, 'text-halo-width': 1.4, 'text-halo-blur': 0.5}});
   }
@@ -315,7 +343,7 @@ let estiloCallesCache: StyleSpecification | null = null;
 export const construirEstilo = async (id: EstiloId, o: OpcionesEstilo): Promise<StyleSpecification> => {
   const c = PALETAS[id];
   const sources: Record<string, SourceSpecification> = {...fuentesBase()};
-  if (o.relieve || o.terreno3d) Object.assign(sources, fuentesRelieve());
+  if (o.relieve || o.terreno3d || id === 'realista') Object.assign(sources, fuentesRelieve());
   if (id === 'satelite') {
     sources.sat = {type: 'raster', tiles: [FUENTES.satelite], tileSize: 256, maxzoom: 15, attribution: ATRIBUCION.satelite};
   }

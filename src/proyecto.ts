@@ -86,7 +86,7 @@ export type ElemTitulo = Base & {
 export type Elemento = ElemPais | ElemRuta | ElemPin | ElemTexto | ElemZona | ElemTitulo;
 export type TipoElemento = Elemento['tipo'];
 
-export type EstiloId = 'documental' | 'geopolitico' | 'noche' | 'satelite' | 'calles' | 'minimal';
+export type EstiloId = 'documental' | 'geopolitico' | 'realista' | 'noche' | 'satelite' | 'calles' | 'minimal';
 
 export type OpcionesEstilo = {
   relieve: boolean;

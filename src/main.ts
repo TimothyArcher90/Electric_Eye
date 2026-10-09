@@ -106,7 +106,7 @@ const recargarEstilo = () => {
 
 const atribucionDe = (id: EstiloId, o: OpcionesEstilo) => {
   const a = [ATRIBUCION.ne];
-  if (o.relieve || o.terreno3d) a.push(ATRIBUCION.terreno);
+  if (o.relieve || o.terreno3d || id === 'realista') a.push(ATRIBUCION.terreno);
   if (id === 'satelite') a.push(ATRIBUCION.satelite);
   if (id === 'calles') a.push(ATRIBUCION.calles);
   return 'Datos: ' + a.join(' · ');
