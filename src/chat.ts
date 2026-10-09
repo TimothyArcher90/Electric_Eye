@@ -60,6 +60,7 @@ export const iniciarChat = () => {
     const mensaje = texto.value.trim();
     if (!mensaje || ocupado) return;
     ocupado = true;
+    document.body.dataset.chatOcupado = '1'; // no recargar la página mientras Claude trabaja
     enviar.disabled = true;
     enviar.textContent = 'Trabajando…';
     texto.value = '';
@@ -115,6 +116,7 @@ export const iniciarChat = () => {
       lista.appendChild(espera);
       lista.scrollTop = lista.scrollHeight;
       ocupado = false;
+      delete document.body.dataset.chatOcupado;
       enviar.disabled = false;
       enviar.textContent = 'Enviar';
     }

@@ -202,3 +202,4 @@ body.con-chat .lateral.der { visibility: hidden; }
 .chat-msg.estado { align-self: stretch; max-width: none; background: none; border: 1px dashed var(--borde); color: var(--tenue);
   font-size: 12px; font-variant-numeric: tabular-nums; padding: 6px 10px; }
 .chat-msg.estado.render { border-style: solid; color: var(--texto); background: var(--panel2); }
+.version { font-size: 10.5px; color: var(--tenue); margin-left: 8px; font-variant-numeric: tabular-nums; }
