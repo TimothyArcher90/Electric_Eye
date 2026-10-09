@@ -216,10 +216,11 @@ const fijar = (map: MapLibre, fuente: string, datos: FC) => {
 // Un mapa limpio, como en los documentales: el nombre de los países que intervienen y nada más. Las ciudades y
 // mares del mapa base se ocultan; los lugares que importan los nombra la pieza (pins, textos, zonas).
 const filtroOriginal = new WeakMap<object, {orig: unknown; clave: string}>();
-const rotulosDeLaHistoria = (map: MapLibre, p: Proyecto) => {
+const rotulosDeLaHistoria = (map: MapLibre, p: Proyecto, t: number) => {
   const activo = p.opciones.soloHistoria !== false;
+  // El nombre entra cuando el país entra en la historia (su 'desde'), no desde el primer fotograma.
   const isos = [...new Set(p.elementos
-    .filter((e) => !e.oculto && (e.tipo === 'pais' || e.tipo === 'territorio'))
+    .filter((e) => !e.oculto && (e.tipo === 'pais' || e.tipo === 'territorio') && t >= e.desde && (e.hasta == null || t < e.hasta))
     .map((e) => (e as {iso: string}).iso))].sort();
   const capa = map.getLayer('paises-etiquetas');
   if (capa) {
@@ -365,7 +366,7 @@ export const aplicarElementos = (map: MapLibre, p: Proyecto, t: number, opts: {s
   fijar(map, 'mm-pins', fc(pins));
   fijar(map, 'mm-textos', fc(textos));
   if (map.getSource('mm-ataques')) fijar(map, 'mm-ataques', fc(ataques));
-  rotulosDeLaHistoria(map, p);
+  rotulosDeLaHistoria(map, p, t);
   fijar(map, 'mm-territorios', fc(territorios));
   fijar(map, 'mm-columnas', fc(columnas));
 

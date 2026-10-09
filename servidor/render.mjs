@@ -29,7 +29,12 @@ const opcionesNavegador = () => {
     }
     args.push('--use-angle=swiftshader', '--enable-unsafe-swiftshader');
   }
-  return lista.map((o) => ({...o, headless: true, args}));
+  // En Windows y macOS el navegador se abre con ventana, pero colocada fuera de la pantalla: así usa la tarjeta
+  // gráfica con seguridad (un navegador sin ventana puede caer en dibujo por software, diez veces más lento) y el
+  // usuario no ve nada. EE_RENDER_OCULTO=1 fuerza el modo sin ventana.
+  const conVentana = process.platform !== 'linux' && !process.env.EE_RENDER_OCULTO;
+  if (conVentana) args.push('--window-position=-32000,-32000', '--window-size=1280,800', '--no-first-run', '--no-default-browser-check');
+  return lista.map((o) => ({...o, headless: !conVentana, args}));
 };
 
 const abrirNavegador = async () => {

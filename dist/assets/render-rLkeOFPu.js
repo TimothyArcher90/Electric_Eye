@@ -1,0 +1,1 @@
+import{e as t,s}from"./puente-B7bsvSxJ.js";window.eeRender=async(o,a,r,i)=>{const e=await t(o,a,(c,d,n)=>window.eeProgreso?.(c,d,n),()=>!!window.eeCancelar,r);return{ruta:await s(e.blob,`${i}.${e.extension.replace(/^\./,"")}`),codec:e.codec,mb:+(e.blob.size/1e6).toFixed(1),calidad:e.calidad}};
