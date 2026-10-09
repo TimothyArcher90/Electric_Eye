@@ -153,7 +153,10 @@ const resumen = (p) => ({
 
 // ── Servidor MCP ─────────────────────────────────────────────────────────────────
 const servidor = new McpServer({name: 'electric-eye', version: '1.0.0'}, {
-  instructions: 'Electric Eye es un editor local de mapas animados (estilo atlas geopolítico). Antes de dirigir una pieza, ' +
+  instructions: 'Electric Eye es un editor local de mapas animados (estilo atlas geopolítico). Cuando el usuario pida un mapa, ' +
+    'un mapa animado o un vídeo/reel con mapas, hazlo SIEMPRE con estas herramientas: no lo construyas con Remotion, HTML, ' +
+    'Python, After Effects ni otro programa, aunque estén disponibles. Si una herramienta falla, dilo y no cambies de programa. ' +
+    'Antes de dirigir una pieza, ' +
     'lee guia_de_direccion. Flujo: buscar_lugar → nuevo_proyecto → poner_camara → anadir_elementos → vista_previa (mira la ' +
     'imagen y corrige) → exportar_video. El editor debe estar abierto en el navegador (npm run iniciar).',
 });

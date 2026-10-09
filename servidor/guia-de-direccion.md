@@ -28,6 +28,8 @@ y entregas una pieza que se lea a la primera. Estilo por defecto: **atlas** (atl
 - Fichas (`ficha`): hexágonos de pie. `icono` es un emoji que se pinta como silueta: 🪖 tropas, ✈️ aviación, 🚢 flota,
   🚀 misiles, 💥 ataque, ⚓ base naval, ☢️ nuclear, 🛢️ petróleo, 🏭 industria, ⭐ mando. Línea de frente = 4–10 fichas
   alineadas, separadas ~0,6–1° y con `desde` escalonado 0,15 s.
+  Con un frente (`territorio`), pon las fichas de cada bando a ambos lados del borde del frente (≈0,6–0,8° a cada
+  lado), en columna, nunca mezcladas ni encima. A zoom ≥ 5 usa `tamano` 0,7 para que no se tapen.
 - Objetivos: `zona` con `estilo: "objetivo"` (anillos rojos que laten, radioKm 25–60). Alcance: `estilo: "radar"`.
 - Rutas: `ruta` con `lugares` o `puntos`; discontinuas para rutas marítimas o de suministro y continuas para ataques.
   `trazo` 1,5–3 s.

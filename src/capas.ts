@@ -241,6 +241,9 @@ export const aplicarElementos = (map: MapLibre, p: Proyecto, t: number, opts: {s
         break;
       }
       case 'pin': {
+        // La imagen de la ficha se crea aquí y no al pedirla el mapa: el render de exportación
+        // pinta un solo fotograma y no espera a 'styleimagemissing', así que la ficha no salía.
+        if (e.estilo === 'ficha' && !map.hasImage(idFicha(e))) map.addImage(idFicha(e), dibujarFicha(idFicha(e)), {pixelRatio: 2});
         const edad = t - e.desde;
         // Rebote al aparecer.
         const escala = edad < 0 ? 1 : Math.min(1.15, 1 - Math.exp(-edad * 9) * Math.cos(edad * 16));
