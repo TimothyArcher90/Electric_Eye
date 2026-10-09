@@ -2,9 +2,9 @@
 import {execSync, spawn} from 'node:child_process';
 import {dirname, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {existsSync, readdirSync, statSync} from 'node:fs';
-import {join} from 'node:path';
-import {build, preview} from 'vite';
+import {createReadStream, existsSync, statSync} from 'node:fs';
+import {createServer} from 'node:http';
+import {extname, join, normalize, sep} from 'node:path';
 import {iniciarPuente, puenteActivo, PUERTO} from './puente.mjs';
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -60,21 +60,35 @@ if (!(await puenteActivo())) {
     }
   }
 }
-// El editor se sirve ya compilado (dist/), no con el servidor de desarrollo: así no depende de cachés que
-// se quedan viejas tras una actualización (la página salía en blanco, sin estilos). Se recompila solo si
-// cambió el código.
-const masReciente = (ruta) => {
-  const st = statSync(ruta);
-  if (!st.isDirectory()) return st.mtimeMs;
-  return Math.max(0, ...readdirSync(ruta).map((f) => masReciente(join(ruta, f))));
-};
-const compilado = join(RAIZ, 'dist', 'index.html');
-const fuentes = ['src', 'index.html', 'package.json', 'vite.config.ts'].map((f) => join(RAIZ, f)).filter(existsSync);
-if (!existsSync(compilado) || Math.max(...fuentes.map(masReciente)) > statSync(compilado).mtimeMs) {
-  console.log('  Preparando el editor (solo tras una actualización, tarda unos segundos)...');
+// El editor viaja ya compilado en dist/ (dentro del repositorio): aquí solo se sirven archivos, sin compilar
+// nada ni depender de Vite. Así arranca en un segundo y no hay cachés que se queden viejas.
+const DIST = join(RAIZ, 'dist');
+if (!existsSync(join(DIST, 'index.html'))) {
+  console.log('  Falta la carpeta dist/ del editor. Compilando (solo esta vez)...');
+  const {build} = await import('vite');
   await build({root: RAIZ, logLevel: 'error'});
 }
-await preview({root: RAIZ, preview: {port: 5174, host: '127.0.0.1', strictPort: true}, logLevel: 'error'});
+const TIPOS = {
+  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json', '.geojson': 'application/geo+json', '.pbf': 'application/x-protobuf',
+  '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.ico': 'image/x-icon',
+  '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.wasm': 'application/wasm',
+};
+const web = createServer((req, res) => {
+  const ruta = decodeURIComponent(new URL(req.url ?? '/', url).pathname);
+  let archivo = normalize(join(DIST, ruta.endsWith('/') ? `${ruta}index.html` : ruta));
+  if (!archivo.startsWith(DIST + sep) && archivo !== DIST) archivo = join(DIST, 'index.html');
+  if (!existsSync(archivo) || statSync(archivo).isDirectory()) {
+    res.writeHead(404).end('No encontrado');
+    return;
+  }
+  res.writeHead(200, {'Content-Type': TIPOS[extname(archivo).toLowerCase()] ?? 'application/octet-stream', 'Cache-Control': 'no-cache'});
+  createReadStream(archivo).pipe(res);
+});
+await new Promise((ok, mal) => {
+  web.once('error', mal);
+  web.listen(5174, '127.0.0.1', ok);
+});
 console.log(`\n  Electric Eye listo: ${url}`);
 abrirNavegador();
 console.log('  Deja esta ventana abierta. Si el navegador no se abrió, entra en esa dirección a mano.');
