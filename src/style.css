@@ -199,3 +199,6 @@ details.plegable[open] > summary::before { content: '▾ '; }
 body.con-chat { grid-template-columns: 290px 1fr 400px; }
 body.con-chat .lateral.der { visibility: hidden; }
 .chat-msg code { background: var(--hover); padding: 0 4px; border-radius: 4px; }
+.chat-msg.estado { align-self: stretch; max-width: none; background: none; border: 1px dashed var(--borde); color: var(--tenue);
+  font-size: 12px; font-variant-numeric: tabular-nums; padding: 6px 10px; }
+.chat-msg.estado.render { border-style: solid; color: var(--texto); background: var(--panel2); }

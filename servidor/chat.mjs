@@ -52,6 +52,9 @@ const NOMBRES = {
   abrir_proyecto: 'Abriendo proyecto', ver_estado: 'Mirando el editor', carpeta_de_salida: 'Carpeta de salida',
 };
 
+const MODIFICAN = new Set(['nuevo_proyecto', 'configurar_estilo', 'cambiar_formato', 'poner_camara', 'anadir_elementos',
+  'editar_elemento', 'borrar_elementos', 'abrir_proyecto']);
+
 export const reiniciarChat = () => {
   enCurso?.kill();
   sesion = null;
@@ -98,7 +101,8 @@ export const manejarChat = (mensaje, res) => {
           if (b.type === 'text' && b.text.trim()) linea(res, {tipo: 'texto', texto: b.text});
           if (b.type === 'tool_use') {
             const corto = String(b.name).replace(/^mcp__electric-eye__/, '');
-            if (NOMBRES[corto]) linea(res, {tipo: 'accion', texto: NOMBRES[corto]}); // las internas (ToolSearch…) no se muestran
+            // Las internas (ToolSearch…) no se muestran. "modifica" cuenta los cambios hechos al mapa.
+            if (NOMBRES[corto]) linea(res, {tipo: 'accion', texto: NOMBRES[corto], modifica: MODIFICAN.has(corto)});
           }
         }
       }

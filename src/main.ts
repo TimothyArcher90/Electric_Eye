@@ -1225,6 +1225,9 @@ iniciarPuente(async (accion, d) => {
       Object.assign(trabajo, {fase: 'renderizando', hecho: 0, total: Math.round(p.duracion * p.fps), ruta: null, error: null, inicio: Date.now()});
       modal.hidden = false;
       $('modal-titulo').textContent = `Claude está exportando ${p.ancho}×${p.alto} · ${p.fps} fps`;
+      // El chat cuenta el tiempo de render con estos avisos.
+      const avisarChat = () => window.dispatchEvent(new CustomEvent('ee-exportacion', {detail: {...trabajo}}));
+      avisarChat();
       void (async () => {
         try {
           const r = await exportarVideo(structuredClone(p), anchoMarco(), (h, tot, fase) => {
@@ -1242,6 +1245,7 @@ iniciarPuente(async (accion, d) => {
         } finally {
           trabajo.segundos = Math.round((Date.now() - trabajo.inicio) / 1000);
           modal.hidden = true;
+          avisarChat();
         }
       })();
       return trabajo;

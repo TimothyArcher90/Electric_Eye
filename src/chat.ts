@@ -8,6 +8,9 @@ const markdown = (t: string) => escapar(t)
   .replace(/`([^`]+)`/g, '<code>$1</code>')
   .replace(/^- /gm, '• ');
 
+/** 75 → "1:15". */
+const reloj = (seg: number) => `${Math.floor(seg / 60)}:${String(Math.floor(seg % 60)).padStart(2, '0')}`;
+
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
 export const iniciarChat = () => {
@@ -61,7 +64,17 @@ export const iniciarChat = () => {
     enviar.textContent = 'Trabajando…';
     texto.value = '';
     añadir('yo', mensaje);
-    const espera = añadir('accion', 'Claude está pensando…');
+    const espera = añadir('estado', '');
+    const inicio = performance.now();
+    let cambios = 0;
+    const pintarEstado = (fin = false) => {
+      const t = reloj((performance.now() - inicio) / 1000);
+      espera.textContent = fin
+        ? `⏱ Tiempo: ${t}  ·  ✏️ Modificaciones: ${cambios}`
+        : `⏱ ${t}  ·  ✏️ ${cambios} modificaciones  ·  Claude está trabajando…`;
+    };
+    pintarEstado();
+    const tic = window.setInterval(() => pintarEstado(), 1000);
     try {
       const r = await fetch('/api/chat', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({mensaje})});
       if (!r.ok || !r.body) throw new Error(await r.text());
@@ -76,21 +89,58 @@ export const iniciarChat = () => {
         resto = lineas.pop() ?? '';
         for (const l of lineas) {
           if (!l.trim()) continue;
-          const ev = JSON.parse(l) as {tipo: string; texto?: string};
+          const ev = JSON.parse(l) as {tipo: string; texto?: string; modifica?: boolean};
           if (ev.tipo === 'texto') añadir('claude', ev.texto ?? '');
-          else if (ev.tipo === 'accion') añadir('accion', `· ${ev.texto}`);
+          else if (ev.tipo === 'accion') {
+            if (ev.modifica) cambios++;
+            // Acciones repetidas seguidas (comprobar la exportación…) se agrupan: "· Comprobando ×4".
+            const previo = espera.previousElementSibling as HTMLDivElement | null;
+            if (previo && previo.dataset.accion === ev.texto) {
+              const n = Number(previo.dataset.n ?? 1) + 1;
+              previo.dataset.n = String(n);
+              previo.textContent = `· ${ev.texto} ×${n}`;
+            } else {
+              añadir('accion', `· ${ev.texto}`).dataset.accion = ev.texto;
+            }
+            lista.appendChild(espera); // el contador siempre al final
+          }
           else if (ev.tipo === 'error') añadir('error', ev.texto ?? 'Error');
         }
       }
     } catch (e) {
       añadir('error', `No pude hablar con el servidor de Electric Eye. ¿Está abierta la ventana negra? (${(e as Error).message})`);
     } finally {
-      espera.remove();
+      window.clearInterval(tic);
+      pintarEstado(true);
+      lista.appendChild(espera);
+      lista.scrollTop = lista.scrollHeight;
       ocupado = false;
       enviar.disabled = false;
       enviar.textContent = 'Enviar';
     }
   };
+
+  // Tiempo de render: el editor avisa al empezar y al terminar cada exportación.
+  let render: {nodo: HTMLDivElement; tic: number; inicio: number} | null = null;
+  window.addEventListener('ee-exportacion', (e) => {
+    const d = (e as CustomEvent).detail as {fase: string; inicio: number; segundos?: number; ruta?: string; mb?: number; error?: string};
+    if (d.fase === 'renderizando' && !render) {
+      const nodo = añadir('estado render', '');
+      const pintar = () => (nodo.textContent = `🎬 Renderizando… ${reloj((Date.now() - d.inicio) / 1000)}`);
+      pintar();
+      render = {nodo, tic: window.setInterval(pintar, 1000), inicio: d.inicio};
+      return;
+    }
+    if (d.fase !== 'renderizando') {
+      const r = render ?? {nodo: añadir('estado render', ''), tic: 0, inicio: d.inicio};
+      window.clearInterval(r.tic);
+      const seg = d.segundos ?? (Date.now() - r.inicio) / 1000;
+      r.nodo.textContent = d.fase === 'listo'
+        ? `🎬 Render: ${reloj(seg)}${d.mb ? `  ·  ${d.mb} MB` : ''}${d.ruta ? `\n📁 ${d.ruta}` : ''}`
+        : `🎬 El render falló tras ${reloj(seg)}: ${d.error ?? ''}`;
+      render = null;
+    }
+  });
 
   $('chat-form').addEventListener('submit', (e) => {
     e.preventDefault();
