@@ -9,11 +9,11 @@ const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 const url = 'http://127.0.0.1:5174/';
 
-/** Windows: termina el proceso que sirve el editor (5174). El puente puede vivir en el conector de Claude: no se toca. */
-const apagarAnterior = () => {
+/** Windows: termina los procesos que escuchan en un puerto. Devuelve si había alguno. */
+const liberarPuerto = (puerto) => {
   try {
     const pids = new Set(execSync('netstat -ano -p tcp').toString().split(/\r?\n/)
-      .filter((l) => /LISTENING/i.test(l) && /:5174\s/.test(l))
+      .filter((l) => /LISTENING/i.test(l) && new RegExp(`:${puerto}\\s`).test(l))
       .map((l) => l.trim().split(/\s+/).pop())
       .filter((pid) => pid && pid !== '0' && pid !== String(process.pid)));
     for (const pid of pids) execSync(`taskkill /F /PID ${pid}`, {stdio: 'ignore'});
@@ -34,7 +34,7 @@ const abrirNavegador = () => {
 console.log('\n  Arrancando Electric Eye...');
 const yaAbierto = await fetch(url, {signal: AbortSignal.timeout(1500)}).then((r) => r.ok, () => false);
 if (yaAbierto) {
-  if (process.platform === 'win32' && apagarAnterior()) {
+  if (process.platform === 'win32' && liberarPuerto(5174)) {
     console.log('\n  Cerrando la sesión anterior de Electric Eye...');
     await new Promise((r) => setTimeout(r, 1500));
   } else {
@@ -44,11 +44,18 @@ if (yaAbierto) {
   }
 }
 
+// Puente con Claude: si ya hay uno sano (por ejemplo, el del conector de la app de Claude) se usa ese. Si el
+// puerto está ocupado por un proceso que no responde, en Windows se libera y se arranca uno nuevo.
 if (!(await puenteActivo())) {
   try {
     await iniciarPuente();
-  } catch (e) {
-    console.log(`  Aviso: el puente con Claude no arrancó (${e.message}). El editor se abre igual.`);
+  } catch {
+    if (process.platform === 'win32' && liberarPuerto(PUERTO)) await new Promise((r) => setTimeout(r, 1000));
+    try {
+      if (!(await puenteActivo())) await iniciarPuente();
+    } catch (e) {
+      console.log(`  Aviso: el puente con Claude no arrancó (${e.message}). El editor se abre igual.`);
+    }
   }
 }
 const vite = await createServer({root: RAIZ, server: {port: 5174, host: '127.0.0.1', strictPort: true}});

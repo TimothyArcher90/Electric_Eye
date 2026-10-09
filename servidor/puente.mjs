@@ -144,6 +144,9 @@ export const iniciarPuente = () => new Promise((ok, mal) => {
     });
   });
 
+  // El WebSocketServer repite los errores del servidor HTTP; sin este oyente, un puerto ocupado tumbaba el proceso
+  // en vez de rechazar la promesa (y el editor no llegaba a abrirse).
+  wss.on('error', () => undefined);
   servidor.once('error', mal);
   servidor.listen(PUERTO, '127.0.0.1', () => ok(servidor));
 });
