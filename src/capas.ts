@@ -278,7 +278,8 @@ export const aplicarElementos = (map: MapLibre, p: Proyecto, t: number, opts: {s
         if (linea.length < 2) break;
         if (e.estilo === 'ataque') {
           const anillo = flechaGruesa(linea, e.anchoKm ?? 60);
-          if (anillo.length > 3) ataques.push({type: 'Feature', properties: {color: e.color, op},
+          // Algo más oscura que el color del bando: la flecha debe leerse encima de su propio país.
+          if (anillo.length > 3) ataques.push({type: 'Feature', properties: {color: oscurecer(e.color, 0.22), op},
             geometry: {type: 'Polygon', coordinates: [anillo]}});
           break;
         }

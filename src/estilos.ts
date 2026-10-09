@@ -331,7 +331,7 @@ const capasAnotacion = (c: Paleta): LayerSpecification[] => [
   {id: 'mm-ataques', type: 'fill', source: 'mm-ataques', paint: {
     'fill-color': ['get', 'color'], 'fill-opacity': ['*', 0.93, ['get', 'op']]}},
   {id: 'mm-ataques-filo', type: 'line', source: 'mm-ataques', paint: {
-    'line-color': '#FFFFFF', 'line-width': 1.6, 'line-opacity': ['*', 0.75, ['get', 'op']]}},
+    'line-color': '#FFFFFF', 'line-width': 2.2, 'line-opacity': ['*', 0.9, ['get', 'op']]}},
   {id: 'mm-flechas', type: 'symbol', source: 'mm-flechas', layout: {
     'icon-image': 'mm-flecha', 'icon-rotate': ['get', 'rumbo'], 'icon-rotation-alignment': 'map',
     'icon-pitch-alignment': 'map', 'icon-size': ['/', ['get', 'grosor'], 7], 'icon-allow-overlap': true,

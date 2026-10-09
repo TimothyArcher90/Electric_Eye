@@ -183,8 +183,8 @@ const pintarTitulo = (
   ctx.save();
   ctx.globalAlpha = op;
   // En vertical (Reel) el título manda: letra más grande; abajo se limita al 88 % del ancho.
-  let tam = (h > w ? 92 : 58) * u;
-  let tamSub = (h > w ? 36 : 26) * u;
+  let tam = (h > w ? 92 : 74) * u;
+  let tamSub = (h > w ? 36 : 28) * u;
   const texto = e.texto.toUpperCase();
   const pad = 26 * u;
   const medir = () => {
