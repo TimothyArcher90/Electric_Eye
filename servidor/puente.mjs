@@ -151,7 +151,8 @@ export const iniciarPuente = () => new Promise((ok, mal) => {
 /** ¿Hay ya un puente escuchando (por ejemplo, lanzado por "npm run iniciar")? */
 export const puenteActivo = async () => {
   try {
-    const r = await fetch(`http://127.0.0.1:${PUERTO}/salud`);
+    // Con límite: un proceso colgado en el puerto no debe dejar el arranque esperando para siempre.
+    const r = await fetch(`http://127.0.0.1:${PUERTO}/salud`, {signal: AbortSignal.timeout(2000)});
     return r.ok;
   } catch {
     return false;

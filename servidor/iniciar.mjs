@@ -31,6 +31,7 @@ const abrirNavegador = () => {
 
 // Si ya estaba abierto (otra ventana o una versión anterior), se apaga y se arranca de nuevo: así un
 // doble clic en el icono siempre deja en marcha la versión recién actualizada.
+console.log('\n  Arrancando Electric Eye...');
 const yaAbierto = await fetch(url, {signal: AbortSignal.timeout(1500)}).then((r) => r.ok, () => false);
 if (yaAbierto) {
   if (process.platform === 'win32' && apagarAnterior()) {
@@ -43,11 +44,17 @@ if (yaAbierto) {
   }
 }
 
-if (!(await puenteActivo())) await iniciarPuente();
+if (!(await puenteActivo())) {
+  try {
+    await iniciarPuente();
+  } catch (e) {
+    console.log(`  Aviso: el puente con Claude no arrancó (${e.message}). El editor se abre igual.`);
+  }
+}
 const vite = await createServer({root: RAIZ, server: {port: 5174, host: '127.0.0.1', strictPort: true}});
 await vite.listen();
 console.log(`\n  Electric Eye listo: ${url}`);
-const {salidas} = await (await fetch(`http://127.0.0.1:${PUERTO}/salud`)).json();
-console.log(`  Puente con Claude: http://127.0.0.1:${PUERTO}  ·  vídeos y PNG en ${salidas}\n`);
-
 abrirNavegador();
+console.log('  Deja esta ventana abierta. Si el navegador no se abrió, entra en esa dirección a mano.');
+const salud = await fetch(`http://127.0.0.1:${PUERTO}/salud`, {signal: AbortSignal.timeout(3000)}).then((r) => r.json(), () => null);
+console.log(salud ? `  Puente con Claude: activo  ·  vídeos y PNG en ${salud.salidas}\n` : '  Puente con Claude: no responde (reinicia la app de Claude).\n');
