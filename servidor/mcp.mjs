@@ -69,6 +69,14 @@ for (const f of leer('mares-etiquetas.geojson').features) {
     LUGARES.push({clave: limpiar(n), nombre: p.nombre ?? p.nombre_en, tipo: 'mar', centro: f.geometry.coordinates, zoom: 5, peso: 1.2});
   }
 }
+// Estrechos, regiones y zonas en disputa que Natural Earth no trae como punto (Ormuz, Donbás, Gaza…).
+for (const f of leer('lugares-extra.geojson').features) {
+  const p = f.properties;
+  for (const n of new Set([p.nombre, p.nombre_en].filter(Boolean))) {
+    LUGARES.push({clave: limpiar(n), nombre: p.nombre, tipo: 'region', centro: f.geometry.coordinates, zoom: p.zoom ?? 6, peso: 0.5});
+  }
+}
+// Sin artículo ni "estrecho de": "Ormuz" encuentra "Estrecho de Ormuz".
 const buscar = (q, max = 6) => {
   const c = limpiar(q);
   return LUGARES

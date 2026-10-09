@@ -5,6 +5,7 @@ import {fileURLToPath} from 'node:url';
 import {createReadStream, existsSync, statSync} from 'node:fs';
 import {createServer} from 'node:http';
 import {extname, join, normalize, sep} from 'node:path';
+import {manejarChat, reiniciarChat} from './chat.mjs';
 import {iniciarPuente, puenteActivo, PUERTO} from './puente.mjs';
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -76,6 +77,26 @@ const TIPOS = {
 };
 const web = createServer((req, res) => {
   const ruta = decodeURIComponent(new URL(req.url ?? '/', url).pathname);
+  // Chat integrado: el editor manda el mensaje y recibe el avance de Claude línea a línea.
+  if (ruta === '/api/chat' && req.method === 'POST') {
+    let cuerpo = '';
+    req.on('data', (t) => (cuerpo += t));
+    req.on('end', () => {
+      let mensaje = '';
+      try {
+        mensaje = String(JSON.parse(cuerpo).mensaje ?? '').trim();
+      } catch {
+        /* cuerpo vacío o roto */
+      }
+      if (!mensaje) return res.writeHead(400).end('Mensaje vacío');
+      manejarChat(mensaje, res);
+    });
+    return;
+  }
+  if (ruta === '/api/chat/nuevo' && req.method === 'POST') {
+    reiniciarChat();
+    return res.writeHead(204).end();
+  }
   let archivo = normalize(join(DIST, ruta.endsWith('/') ? `${ruta}index.html` : ruta));
   if (!archivo.startsWith(DIST + sep) && archivo !== DIST) archivo = join(DIST, 'index.html');
   if (!existsSync(archivo) || statSync(archivo).isDirectory()) {

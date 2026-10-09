@@ -4,9 +4,13 @@ Editor local de mapas animados en el registro de los documentales de geopolític
 se iluminan, frentes que avanzan, fichas de pie, objetivos que laten, radares, rutas, columnas 3D, profundidad de
 campo y etalonaje. Exporta MP4 y PNG.
 
-**Se dirige desde el chat de Claude.** Le dices qué quieres contar; Claude monta la pieza en el editor, la mira y la
-corrige, y exporta el vídeo. También puedes editar a mano cuando quieras. No hace falta clave de API: usa tu
-suscripción de Claude a través de la app de escritorio o de Claude Code.
+**Se dirige desde el chat que lleva dentro.** Abres Electric Eye (icono del escritorio) y a la derecha está el
+**💬 Chat**: escribes lo que quieres ver en el mapa y Claude lo monta delante de ti, lo revisa y lo exporta. El chat
+usa Claude Code instalado en el ordenador con tu cuenta de Claude (o `ANTHROPIC_API_KEY` si la defines); no hace falta
+nada más. También puede dirigirse desde la app de escritorio de Claude o desde Claude Code (sección 2).
+
+Le dices qué quieres contar; Claude monta la pieza, la mira y la corrige, y exporta el vídeo. También puedes editar a
+mano cuando quieras.
 
 ```
 Tú (chat de Claude) ──► conector MCP "electric-eye" ──► puente local :5175 ──► editor en el navegador :5174

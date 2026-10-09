@@ -7,6 +7,7 @@ import {aplicarElementos, borrador, olvidarEstado, precargarGeometrias, precarga
 import {ATRIBUCION, BANDOS, construirEstilo, NOMBRES_ESTILO, paletaDe, PALETAS} from './estilos';
 import {capturarPNG, diagnosticar, exportarVideo} from './exportar';
 import {aplicarOpticaPrevia, pintarOverlay} from './overlay';
+import {iniciarChat} from './chat';
 import {iniciarPuente, subirArchivo} from './puente';
 import {
   cambiarFormato, type Elemento, type EstiloId, OPCIONES_DE_ESTILO, type Keyframe, type LonLat, normalizar, type OpcionesEstilo, type PresetEstilo, type Proyecto,
@@ -1185,6 +1186,7 @@ const reducirPNG = async (b: Blob, maxAncho: number) => {
 const trabajo: {fase: string; hecho: number; total: number; ruta: string | null; error: string | null; inicio: number;
   codec?: string; mb?: number; segundos?: number} = {fase: 'sin trabajo', hecho: 0, total: 0, ruta: null, error: null, inicio: 0};
 
+iniciarChat();
 iniciarPuente(async (accion, d) => {
   switch (accion) {
     case 'estado':

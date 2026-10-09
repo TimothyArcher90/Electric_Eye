@@ -38,6 +38,7 @@
       </label>
     </div>
     <div class="grupo derecha">
+      <button id="b-chat" class="chat-boton" title="Pídele el mapa a Claude por escrito">💬 Chat</button>
       <button id="b-tema" title="Cambiar entre tema claro y oscuro">◐</button>
       <button id="b-png" title="Capturar el fotograma actual a resolución final">Capturar PNG</button>
       <button id="b-exportar" class="primario" title="Renderizar vídeo">Exportar vídeo</button>
@@ -122,5 +123,21 @@
   </div>
   <div class="aviso" id="aviso"></div>
   <script type="module" src="/src/main.ts"></script>
+  <section id="chat" class="chat" hidden aria-label="Chat con Claude">
+    <header class="chat-cab">
+      <strong>Chat con Claude</strong>
+      <span class="chat-acciones">
+        <button id="chat-nuevo" title="Empezar una conversación nueva">Nueva</button>
+        <button id="chat-cerrar" title="Cerrar el chat">✕</button>
+      </span>
+    </header>
+    <div id="chat-mensajes" class="chat-mensajes">
+      <div class="chat-msg claude">Dime qué mapa quieres. Por ejemplo: <em>"Reel de 15 s sobre Taiwán: China en naranja, tres flotas rodeando la isla y un objetivo rojo sobre Taipéi. Título: EL BLOQUEO. Expórtalo."</em> Lo verás montarse aquí al lado.</div>
+    </div>
+    <form id="chat-form" class="chat-form">
+      <textarea id="chat-texto" rows="3" placeholder="Escribe lo que quieres… (Enter envía, Shift+Enter salta línea)"></textarea>
+      <button id="chat-enviar" class="primario" type="submit">Enviar</button>
+    </form>
+  </section>
 </body>
 </html>

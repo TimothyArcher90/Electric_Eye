@@ -9,8 +9,9 @@ let indice: (Lugar & {clave: string; peso: number})[] | null = null;
 // Búsqueda sin conexión sobre Natural Earth: países (nombre en español e inglés), ciudades y mares.
 export const cargarIndice = async () => {
   if (indice) return indice;
-  const [paises, ciudades, mares] = await Promise.all(
-    ['data/paises-etiquetas.geojson', 'data/ciudades.geojson', 'data/mares.geojson'].map((u) => fetch(u).then((r) => r.json())),
+  const [paises, ciudades, mares, extra] = await Promise.all(
+    ['data/paises-etiquetas.geojson', 'data/ciudades.geojson', 'data/mares.geojson', 'data/lugares-extra.geojson']
+      .map((u) => fetch(u).then((r) => r.json())),
   );
   const out: (Lugar & {clave: string; peso: number})[] = [];
   for (const f of paises.features) {
@@ -39,6 +40,14 @@ export const cargarIndice = async () => {
     const ys = anillo.map((c) => c[1]);
     out.push({nombre: n, detalle: 'Mar / golfo / estrecho', en: [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2],
       zoom: 5, tipo: 'mar', clave: limpiar(n), peso: 1.2});
+  }
+  // Estrechos, regiones y zonas en disputa que Natural Earth no trae como punto.
+  for (const f of extra.features) {
+    const pr = f.properties;
+    for (const n of new Set([pr.nombre, pr.nombre_en].filter(Boolean))) {
+      out.push({nombre: pr.nombre, detalle: 'Región / estrecho', en: f.geometry.coordinates, zoom: pr.zoom ?? 6, tipo: 'mar',
+        clave: limpiar(n as string), peso: 0.5});
+    }
   }
   indice = out;
   return out;

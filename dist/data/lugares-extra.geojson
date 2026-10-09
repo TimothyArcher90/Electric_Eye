@@ -1,0 +1,366 @@
+{
+"type": "FeatureCollection",
+"_nota": "Lugares geopolíticos que Natural Earth no trae como punto. Coordenadas aproximadas del centro (a mano).",
+"features": [
+{
+"type": "Feature",
+"properties": {
+"nombre": "Estrecho de Ormuz",
+"nombre_en": "Strait of Hormuz",
+"zoom": 7
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+56.45,
+26.55
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"nombre": "Canal de Suez",
+"nombre_en": "Suez Canal",
+"zoom": 7
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+32.35,
+30.45
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"nombre": "Canal de Panamá",
+"nombre_en": "Panama Canal",
+"zoom": 8
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+-79.68,
+9.08
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"nombre": "Estrecho de Kerch",
+"nombre_en": "Kerch Strait",
+"zoom": 8
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+36.55,
+45.3
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"nombre": "Dardanelos",
+"nombre_en": "Dardanelles",
+"zoom": 8
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+26.4,
+40.2
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"nombre": "Crimea",
+"nombre_en": "Crimea",
+"zoom": 6.5
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+34.1,
+45.1
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"nombre": "Donbás",
+"nombre_en": "Donbas",
+"zoom": 6
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+38.5,
+48.2
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"nombre": "Franja de Gaza",
+"nombre_en": "Gaza Strip",
+"zoom": 9
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+34.4,
+31.42
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"nombre": "Cisjordania",
+"nombre_en": "West Bank",
+"zoom": 8
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+35.25,
+31.95
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"nombre": "Altos del Golán",
+"nombre_en": "Golan Heights",
+"zoom": 8.5
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+35.75,
+33.0
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"nombre": "Cachemira",
+"nombre_en": "Kashmir",
+"zoom": 6
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+75.5,
+34.5
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"nombre": "Islas Spratly",
+"nombre_en": "Spratly Islands",
+"zoom": 6.5
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+114.0,
+10.0
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"nombre": "Islas Paracel",
+"nombre_en": "Paracel Islands",
+"zoom": 7
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+112.0,
+16.5
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"nombre": "Corredor de Suwałki",
+"nombre_en": "Suwalki Gap",
+"zoom": 7.5
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.2,
+54.2
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"nombre": "Transnistria",
+"nombre_en": "Transnistria",
+"zoom": 7.5
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+29.5,
+47.2
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"nombre": "Nagorno Karabaj",
+"nombre_en": "Nagorno-Karabakh",
+"zoom": 7.5
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+46.7,
+39.9
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"nombre": "Sahel",
+"nombre_en": "Sahel",
+"zoom": 4
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+0.0,
+15.0
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"nombre": "Cuerno de África",
+"nombre_en": "Horn of Africa",
+"zoom": 4.5
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+45.0,
+8.0
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"nombre": "Mar de la China Meridional",
+"nombre_en": "South China Sea",
+"zoom": 4.6
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+114.0,
+13.0
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"nombre": "Península de Corea",
+"nombre_en": "Korean Peninsula",
+"zoom": 5.5
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+127.5,
+37.5
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"nombre": "Zona desmilitarizada de Corea",
+"nombre_en": "Korean DMZ",
+"zoom": 7.5
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+127.0,
+38.0
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"nombre": "Golfo Pérsico",
+"nombre_en": "Persian Gulf",
+"zoom": 5.5
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+51.5,
+27.0
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"nombre": "Mar Rojo",
+"nombre_en": "Red Sea",
+"zoom": 4.8
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+38.5,
+20.0
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"nombre": "Ártico",
+"nombre_en": "Arctic",
+"zoom": 2.5
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+0.0,
+85.0
+]
+}
+}
+]
+}

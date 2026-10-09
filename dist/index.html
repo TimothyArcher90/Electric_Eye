@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Electric Eye</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='13' fill='%23FF5A36'/><path d='M6 14c5-4 9 3 14-1s6 2 6 2' stroke='white' stroke-width='2.5' fill='none'/></svg>" />
-  <script type="module" crossorigin src="./assets/index-Dj_2_4ao.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-DSbHq-U1.css">
+  <script type="module" crossorigin src="./assets/index-Cz6DApAn.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-CLKWUw2u.css">
 </head>
 <body>
   <header class="barra">
@@ -40,6 +40,7 @@
       </label>
     </div>
     <div class="grupo derecha">
+      <button id="b-chat" class="chat-boton" title="Pídele el mapa a Claude por escrito">💬 Chat</button>
       <button id="b-tema" title="Cambiar entre tema claro y oscuro">◐</button>
       <button id="b-png" title="Capturar el fotograma actual a resolución final">Capturar PNG</button>
       <button id="b-exportar" class="primario" title="Renderizar vídeo">Exportar vídeo</button>
@@ -123,5 +124,21 @@
     </div>
   </div>
   <div class="aviso" id="aviso"></div>
+  <section id="chat" class="chat" hidden aria-label="Chat con Claude">
+    <header class="chat-cab">
+      <strong>Chat con Claude</strong>
+      <span class="chat-acciones">
+        <button id="chat-nuevo" title="Empezar una conversación nueva">Nueva</button>
+        <button id="chat-cerrar" title="Cerrar el chat">✕</button>
+      </span>
+    </header>
+    <div id="chat-mensajes" class="chat-mensajes">
+      <div class="chat-msg claude">Dime qué mapa quieres. Por ejemplo: <em>"Reel de 15 s sobre Taiwán: China en naranja, tres flotas rodeando la isla y un objetivo rojo sobre Taipéi. Título: EL BLOQUEO. Expórtalo."</em> Lo verás montarse aquí al lado.</div>
+    </div>
+    <form id="chat-form" class="chat-form">
+      <textarea id="chat-texto" rows="3" placeholder="Escribe lo que quieres… (Enter envía, Shift+Enter salta línea)"></textarea>
+      <button id="chat-enviar" class="primario" type="submit">Enviar</button>
+    </form>
+  </section>
 </body>
 </html>

@@ -172,3 +172,30 @@ details.plegable > summary { cursor: pointer; list-style: none; font-size: 11px;
 details.plegable > summary::before { content: '▸ '; }
 details.plegable[open] > summary::before { content: '▾ '; }
 .lateral section { padding: 14px 16px; }
+
+/* ── Chat con Claude ─────────────────────────────────────────────────────────── */
+.chat-boton { border-color: var(--acento); color: var(--acento); font-weight: 600; }
+.chat {
+  position: fixed; top: 52px; right: 0; bottom: 230px; width: min(400px, 100vw); z-index: 50;
+  background: var(--panel); border-left: 1px solid var(--borde); box-shadow: -12px 0 30px rgba(0,0,0,.12);
+  display: flex; flex-direction: column;
+}
+.chat[hidden] { display: none; }
+.chat-cab { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--borde); }
+.chat-acciones { display: flex; gap: 6px; }
+.chat-mensajes { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.chat-msg { padding: 9px 12px; border-radius: 10px; line-height: 1.45; white-space: pre-wrap; max-width: 92%; font-size: 13.5px; }
+.chat-msg.yo { align-self: flex-end; background: var(--acento); color: #fff; }
+.chat-msg.claude { align-self: flex-start; background: var(--panel2); border: 1px solid var(--borde); }
+.chat-msg.accion { align-self: flex-start; background: none; color: var(--tenue); font-size: 12px; padding: 0 4px; }
+.chat-msg.error { align-self: stretch; background: #F9E3DC; color: #8A2E14; border: 1px solid #E8B9A8; }
+:root[data-tema="oscuro"] .chat-msg.error { background: #3A1E17; color: #FFB8A3; border-color: #5C2C20; }
+.chat-form { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--borde); align-items: flex-end; }
+.chat-form textarea {
+  flex: 1; resize: none; background: var(--campo); border: 1px solid var(--borde); border-radius: 8px; padding: 8px 10px;
+  font: inherit; color: inherit;
+}
+/* Con el chat abierto, ocupa la columna derecha (el inspector se oculta) y el mapa no queda tapado. */
+body.con-chat { grid-template-columns: 290px 1fr 400px; }
+body.con-chat .lateral.der { visibility: hidden; }
+.chat-msg code { background: var(--hover); padding: 0 4px; border-radius: 4px; }
