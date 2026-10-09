@@ -139,6 +139,7 @@ export const capturarPNG = async (p: Proyecto, t: number, anchoCss: number, vist
   const r = new Renderizador(p, anchoCss, vista);
   try {
     await r.iniciar();
+    await r.fotograma(t); // calentamiento: filtros de rótulos e imágenes listos
     await r.fotograma(t);
     return await new Promise<Blob>((ok, mal) => r.lienzo.toBlob((b) => (b ? ok(b) : mal(new Error('PNG vacío'))), 'image/png'));
   } finally {
@@ -168,6 +169,9 @@ export const exportarVideo = async (
     await output.start();
 
     const total = Math.max(1, Math.round(p.duracion * p.fps));
+    // Fotograma de calentamiento (se descarta): los filtros de rótulos y las imágenes se aplican en el primer
+    // pase, y sin él el primer fotograma del vídeo salía con rótulos que no tocaban.
+    await r.fotograma(0);
     // Control de calidad: cada fotograma se reduce a 64 px de ancho y se compara con el anterior. Un cambio
     // mucho mayor que lo normal (salto de cámara, parpadeo, tesela que aparece de golpe) queda anotado.
     const mini = document.createElement('canvas');
