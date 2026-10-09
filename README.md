@@ -19,6 +19,9 @@ Doble clic en **`Instalar Electric Eye.bat`**. Instala Node.js si falta, las dep
 app de escritorio de Claude y con Claude Code, crea el acceso directo **Electric Eye** en el escritorio y lo arranca.
 Al terminar, cierra y vuelve a abrir la app de Claude.
 
+Desde entonces, el icono **Electric Eye** del escritorio hace todo cada vez: busca actualizaciones, reinicia el editor
+si ya estaba abierto y abre la pestaña en el navegador.
+
 O pídeselo a Claude Code en tu PC: *"Clona https://github.com/TimothyArcher90/Electric_Eye en D:\electric-eye y
 ejecuta `Instalar Electric Eye.bat`"*.
 
@@ -26,7 +29,7 @@ ejecuta `Instalar Electric Eye.bat`"*.
 
 Necesitas Node.js 20 o superior y Chrome o Edge.
 
-- **Windows:** doble clic en `Iniciar Electric Eye.bat` (la primera vez instala dependencias).
+- **Windows:** doble clic en `Iniciar Electric Eye.bat` (se actualiza con `git pull` y la primera vez instala dependencias).
 - **Cualquier sistema:** `npm install` y luego `npm run iniciar`.
 
 Se abre `http://127.0.0.1:5174`. Deja esa pestaña abierta: es donde se renderiza. El indicador **● Claude** de la

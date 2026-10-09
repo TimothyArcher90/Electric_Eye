@@ -1,9 +1,8 @@
 @echo off
-REM Arranca Electric Eye: editor en el navegador + puente con Claude.
+REM Arranca Electric Eye: se actualiza, abre el editor en el navegador y conecta con Claude.
+REM Deja esta ventana abierta mientras lo usas. Para apagarlo, ciérrala.
 cd /d "%~dp0"
-if not exist node_modules (
-  echo Instalando dependencias por primera vez...
-  call npm install
-)
+title Electric Eye
+node servidor\actualizar.mjs
 call npm run iniciar
-pause
+if errorlevel 1 pause

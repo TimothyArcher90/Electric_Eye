@@ -25,7 +25,18 @@ if (!(await puenteActivo())) {
 
 const salidasActuales = async () => (await (await fetch(`http://127.0.0.1:${PUERTO}/salud`)).json()).salidas;
 
+// Si el puente se cayó (por ejemplo, se reinició el editor), este conector lo vuelve a levantar.
+const asegurarPuente = async () => {
+  if (await puenteActivo()) return;
+  try {
+    await iniciarPuente();
+  } catch {
+    /* otro proceso lo abrió a la vez */
+  }
+};
+
 const orden = async (accion, datos = {}, limiteMs = 120000) => {
+  await asegurarPuente();
   const r = await fetch(`http://127.0.0.1:${PUERTO}/rpc`, {
     method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({accion, datos, limiteMs}),
   });
