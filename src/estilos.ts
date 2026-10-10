@@ -171,6 +171,7 @@ const fuentesBase = (): Record<string, SourceSpecification> => ({
   'mm-rutas': {type: 'geojson', data: {type: 'FeatureCollection', features: []}, lineMetrics: true},
   'mm-flechas': {type: 'geojson', data: {type: 'FeatureCollection', features: []}},
   'mm-ataques': {type: 'geojson', data: {type: 'FeatureCollection', features: []}},
+  'mm-moviles': {type: 'geojson', data: {type: 'FeatureCollection', features: []}},
   'mm-pins': {type: 'geojson', data: {type: 'FeatureCollection', features: []}},
   'mm-textos': {type: 'geojson', data: {type: 'FeatureCollection', features: []}},
   'mm-borrador': {type: 'geojson', data: {type: 'FeatureCollection', features: []}},
@@ -324,10 +325,15 @@ const capasAnotacion = (c: Paleta): LayerSpecification[] => [
   // Flechas de ataque gruesas: sombra suave, relleno y filo claro.
   {id: 'mm-ataques-sombra', type: 'line', source: 'mm-ataques', paint: {
     'line-color': '#000000', 'line-width': 10, 'line-blur': 10, 'line-opacity': ['*', 0.28, ['get', 'op']], 'line-translate': [4, 6]}},
-  {id: 'mm-ataques', type: 'fill', source: 'mm-ataques', paint: {
-    'fill-color': ['get', 'color'], 'fill-opacity': ['*', 0.93, ['get', 'op']]}},
-  {id: 'mm-ataques-filo', type: 'line', source: 'mm-ataques', paint: {
-    'line-color': '#FFFFFF', 'line-width': 2.2, 'line-opacity': ['*', 0.9, ['get', 'op']]}},
+  // Flecha en 3D: placa extruida con canto sombreado (se ve en perspectiva al inclinar la cámara).
+  {id: 'mm-ataques', type: 'fill-extrusion', source: 'mm-ataques', paint: {
+    'fill-extrusion-color': ['get', 'color'], 'fill-extrusion-height': ['get', 'altura'], 'fill-extrusion-base': 0,
+    'fill-extrusion-opacity': 0.96, 'fill-extrusion-vertical-gradient': true}},
+  // Unidades que viajan por una ruta (drones, aviones, misiles): tumbadas sobre el mapa y orientadas al rumbo.
+  {id: 'mm-moviles', type: 'symbol', source: 'mm-moviles', layout: {
+    'icon-image': ['get', 'img'], 'icon-rotate': ['get', 'rumbo'], 'icon-rotation-alignment': 'map',
+    'icon-pitch-alignment': 'map', 'icon-size': ['*', 0.95, ['get', 'tam']], 'icon-allow-overlap': true,
+    'icon-ignore-placement': true}, paint: {'icon-opacity': ['get', 'op']}},
   {id: 'mm-flechas', type: 'symbol', source: 'mm-flechas', layout: {
     'icon-image': 'mm-flecha', 'icon-rotate': ['get', 'rumbo'], 'icon-rotation-alignment': 'map',
     'icon-pitch-alignment': 'map', 'icon-size': ['/', ['get', 'grosor'], 7], 'icon-allow-overlap': true,

@@ -39,6 +39,13 @@ export const ICONOS: Record<string, string> = {
   fabrica: 'M10 88 V54 L30 64 V54 L50 64 V54 L70 64 V20 H82 V88 Z',
   mando: estrella(50, 52, 42, 17, 5),
   dron: 'M42 44 H58 V56 H42 Z M20 30 A10 10 0 1 1 19.99 30 Z M80 30 A10 10 0 1 1 79.99 30 Z M20 70 A10 10 0 1 1 19.99 70 Z M80 70 A10 10 0 1 1 79.99 70 Z M26 34 L44 46 L42 48 L24 36 Z M74 34 L56 46 L58 48 L76 36 Z M26 66 L44 54 L42 52 L24 64 Z M74 66 L56 54 L58 52 L76 64 Z',
+  // Dron de ala fija tipo Bayraktar/Reaper (visto desde arriba, morro hacia arriba): ala larga y cola en V.
+  'dron-ala': 'M48 10 Q50 6 52 10 L53 40 L94 46 L94 51 L53 50 L52 76 L62 86 L60 89 L50 83 L40 89 L38 86 L48 76 L47 50 L6 51 L6 46 L47 40 Z',
+  // Dron kamikaze en delta tipo Shahed (desde arriba).
+  shahed: 'M50 6 L57 30 L88 80 L88 86 L57 76 L54 90 L46 90 L43 76 L12 86 L12 80 L43 30 Z',
+  // Enjambre: varios drones pequeños.
+  enjambre: [[30, 30], [62, 22], [46, 54], [74, 58], [24, 70]].map(([x, y]) =>
+    `M${x} ${y - 9} L${x + 3} ${y - 1} L${x + 12} ${y + 5} L${x + 12} ${y + 8} L${x + 3} ${y + 5} L${x + 3} ${y + 9} L${x - 3} ${y + 9} L${x - 3} ${y + 5} L${x - 12} ${y + 8} L${x - 12} ${y + 5} L${x - 3} ${y - 1} Z`).join(' '),
   helicoptero: 'M8 26 H92 V30 H8 Z M48 30 H52 V40 H48 Z M30 40 H62 Q76 42 78 54 Q76 66 60 66 H40 Q26 66 24 54 Q24 44 30 40 Z M78 50 H96 L98 42 H94 L90 50 Z M36 66 H40 V74 H36 Z M58 66 H62 V74 H58 Z M28 74 H70 V78 H28 Z',
   submarino: 'M8 60 Q8 48 30 48 H74 Q92 48 94 60 Q92 72 74 72 H30 Q8 72 8 60 Z M42 36 H58 V48 H42 Z M49 24 H51 V36 H49 Z',
   satelite: 'M40 40 H60 V60 H40 Z M6 44 H34 V56 H6 Z M66 44 H94 V56 H66 Z M34 49 H40 V51 H34 Z M60 49 H66 V51 H60 Z M46 60 H54 L58 72 H42 Z',
@@ -56,6 +63,8 @@ const SINONIMOS: Record<string, string> = {
   buque: 'barco', armada: 'barco', portaaviones: 'barco', aviacion: 'avion', caza: 'avion', misiles: 'misil',
   ataque: 'explosion', bombardeo: 'explosion', base: 'ancla', puerto: 'ancla', petroleo: 'petroleo', gas: 'petroleo',
   industria: 'fabrica', cuartel: 'mando', estrella: 'mando', drones: 'dron', submarinos: 'submarino',
+  cuadricoptero: 'dron', bayraktar: 'dron-ala', reaper: 'dron-ala', 'dron ala': 'dron-ala', 'dron de ala fija': 'dron-ala',
+  'shahed-136': 'shahed', kamikaze: 'shahed', geran: 'shahed', 'dron kamikaze': 'shahed', 'enjambre de drones': 'enjambre',
 };
 
 const limpiar = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();

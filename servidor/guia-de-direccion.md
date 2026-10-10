@@ -39,7 +39,7 @@ Taiwán), su nombre puede quedar fuera. Si debe leerse, añade un `texto` con el
   dónde avanza (0 = norte, 90 = este, 180 = sur, 270 = oeste) y `hasta_fraccion` cuánto cubre.
 - Fichas (`ficha`): hexágonos de pie con silueta propia. `icono` por nombre: `soldado`, `tanque`, `barco`,
   `submarino`, `avion`, `helicoptero`, `dron`, `misil`, `explosion`, `ancla` (base naval), `nuclear`, `petroleo`,
-  `fabrica`, `mando`, `satelite`. (Los emojis de antes también valen: 🪖 ✈️ 🚢 🚀 💥 ⚓ ☢️ 🛢️ 🏭 ⭐.) Línea de frente = 4–10 fichas
+  `fabrica`, `mando`, `satelite`, `infante`, y drones: `dron`, `dron-ala`, `shahed`, `enjambre`. (Los emojis de antes también valen: 🪖 ✈️ 🚢 🚀 💥 ⚓ ☢️ 🛢️ 🏭 ⭐.) Línea de frente = 4–10 fichas
   alineadas, separadas ~0,6–1° y con `desde` escalonado 0,15 s.
   Formas (`forma`), como en la referencia: `hexagono` (ficha de pie, por defecto), `peana` (soldado o tanque de
   pie sobre una base hexagonal del color del bando: para dibujar un frente, 4–8 en línea) y `unidad` (barco o
@@ -52,6 +52,11 @@ Taiwán), su nombre puede quedar fuera. Si debe leerse, añade un `texto` con el
 - Ataques y ofensivas: `ruta` con `"estilo": "ataque"` y `anchoKm` (30–120): flecha gruesa que se ensancha y avanza,
   como en los documentales. Es lo más vistoso para un avance militar o un bloqueo; 1–3 por plano.
 - Rutas: `ruta` con `lugares` o `puntos`; discontinuas para rutas marítimas o de suministro y continuas para ataques.
+- Unidades en movimiento: añade `"movil"` a una ruta y la unidad viaja por ella mientras se dibuja, vista desde
+  arriba y orientada al rumbo: `dron` (cuadricóptero), `dron-ala` (tipo Bayraktar/Reaper), `shahed` (dron kamikaze
+  en delta), `enjambre`, `avion`, `misil`, `helicoptero`, `barco`. `tamanoMovil` la agranda. Ideal para ataques con
+  drones o misiles: ruta discontinua del color del bando + `movil`.
+- Las flechas de ataque son placas en 3D: se lucen con la cámara inclinada (50–60°).
   Una ruta marítima nunca cruza tierra: si rodea una isla o costa, añade puntos intermedios en el mar.
   `trazo` 1,5–3 s.
 - Cifras: `columna` (3D) sobre la capital o el lugar del dato; altura proporcional entre columnas; `texto` con la cifra.

@@ -111,20 +111,56 @@ const dibujarPeana = (color: string, icono: string) => lienzo(168, 200, (c) => {
   c.shadowColor = 'rgba(0,0,0,0.35)';
   c.shadowBlur = 10;
   c.shadowOffsetY = 5;
+  // Peana en 3D: cara superior y canto (dos hexágonos desplazados y el lateral entre ambos).
+  hexPlano(c, cx, by + 6, 62, 0.42);
+  c.fillStyle = oscurecer(color, 0.45);
+  c.fill();
+  c.shadowColor = 'transparent';
+  c.fillRect(cx - 62, by, 124, 6);
   hexPlano(c, cx, by, 62, 0.42);
   c.fillStyle = '#FFFFFF';
   c.fill();
-  c.shadowColor = 'transparent';
-  hexPlano(c, cx, by - 3, 54, 0.42);
-  c.fillStyle = color;
+  hexPlano(c, cx, by - 2, 55, 0.42);
+  const cara = c.createLinearGradient(cx - 55, by - 25, cx + 55, by + 25);
+  cara.addColorStop(0, color);
+  cara.addColorStop(1, oscurecer(color, 0.18));
+  c.fillStyle = cara;
   c.fill();
   const forma = silueta(icono === '🪖' || icono === 'soldado' || !icono ? 'infante' : icono) ?? silueta('infante')!;
   c.save();
   c.translate(cx - 60, by - 128);
   c.scale(1.2, 1.2);
-  c.shadowColor = 'rgba(0,0,0,0.25)';
+  c.shadowColor = 'rgba(0,0,0,0.3)';
   c.shadowBlur = 4;
-  c.fillStyle = '#1B1712';
+  // Figura con luz desde arriba a la izquierda: volumen sin dejar de ser silueta.
+  const luz = c.createLinearGradient(20, 0, 80, 100);
+  luz.addColorStop(0, '#4A4036');
+  luz.addColorStop(0.55, '#1B1712');
+  luz.addColorStop(1, '#0C0A08');
+  c.fillStyle = luz;
+  c.fill(forma);
+  c.restore();
+});
+
+/** Unidad que viaja por una ruta, vista desde arriba (morro hacia arriba): blanca, con contorno y sombra. */
+const dibujarMovil = (icono: string) => lienzo(128, 128, (c) => {
+  const forma = silueta(icono) ?? silueta('avion')!;
+  c.save();
+  c.translate(14, 14);
+  c.save();
+  c.translate(7, 11);
+  c.shadowColor = 'rgba(0,0,0,0.5)';
+  c.shadowBlur = 9;
+  c.fillStyle = 'rgba(0,0,0,0.35)';
+  c.fill(forma);
+  c.restore();
+  const blanco = c.createLinearGradient(0, 0, 100, 100);
+  blanco.addColorStop(0, '#FFFFFF');
+  blanco.addColorStop(1, '#C3CAD2');
+  c.fillStyle = blanco;
+  c.strokeStyle = 'rgba(25,20,15,0.85)';
+  c.lineWidth = 3;
+  c.stroke(forma);
   c.fill(forma);
   c.restore();
 });
@@ -141,7 +177,10 @@ const dibujarUnidad = (color: string, icono: string) => lienzo(150, 130, (c) => 
   c.fillStyle = 'rgba(0,0,0,0.35)';
   c.fill(forma);
   c.restore();
-  c.fillStyle = '#FFFFFF';
+  const blanco = c.createLinearGradient(0, 0, 100, 100);
+  blanco.addColorStop(0, '#FFFFFF');
+  blanco.addColorStop(1, '#C9CFD6');
+  c.fillStyle = blanco;
   c.strokeStyle = 'rgba(30,24,18,0.75)';
   c.lineWidth = 2.5;
   c.stroke(forma);
@@ -180,10 +219,14 @@ const dibujarFicha = (id: string) => {
     c.shadowColor = 'rgba(0,0,0,0.35)';
     c.shadowBlur = 8;
     c.shadowOffsetY = 4;
+    // Canto de la ficha (grosor): da volumen, como una pieza de juego de mesa.
+    hexagono(c, cx, cy + 9, 76);
+    c.fillStyle = '#B9B2A6';
+    c.fill();
+    c.shadowColor = 'transparent';
     hexagono(c, cx, cy, 76);
     c.fillStyle = '#FFFFFF';
     c.fill();
-    c.shadowColor = 'transparent';
     hexagono(c, cx, cy, 66);
     c.fillStyle = fondo === 'blanco' ? '#FFFFFF' : color;
     c.fill();
@@ -202,7 +245,10 @@ const dibujarFicha = (id: string) => {
       c.translate(50, 50);
       c.scale(1.02, 1.02);
       c.translate(-50, -50);
-      c.fillStyle = fondo === 'blanco' ? '#1C2B45' : '#121212';
+      const tinta = c.createLinearGradient(0, 0, 100, 100);
+      tinta.addColorStop(0, fondo === 'blanco' ? '#3A5280' : '#3A332B');
+      tinta.addColorStop(1, fondo === 'blanco' ? '#121D33' : '#0B0A08');
+      c.fillStyle = tinta;
       c.fill(silueta(icono)!);
       c.restore();
     } else if (icono) {
@@ -322,6 +368,7 @@ export const aplicarElementos = (map: MapLibre, p: Proyecto, t: number, opts: {s
   const territorios: GeoJSON.Feature[] = [];
   const columnas: GeoJSON.Feature[] = [];
   const ataques: GeoJSON.Feature[] = [];
+  const moviles: GeoJSON.Feature[] = [];
   const estadoPaises = new Map<string, {color: string; op: number; opBorde: number}>();
 
   for (const e of p.elementos as Elemento[]) {
@@ -347,9 +394,19 @@ export const aplicarElementos = (map: MapLibre, p: Proyecto, t: number, opts: {s
         if (e.estilo === 'ataque') {
           const anillo = flechaGruesa(linea, e.anchoKm ?? 60);
           // Algo más oscura que el color del bando: la flecha debe leerse encima de su propio país.
-          if (anillo.length > 3) ataques.push({type: 'Feature', properties: {color: oscurecer(e.color, 0.22), op},
+          // Grosor de la placa: un cuarto del ancho (crece al aparecer y baja al desvanecerse).
+          if (anillo.length > 3) ataques.push({type: 'Feature', properties: {color: oscurecer(e.color, 0.22), op,
+            altura: (e.anchoKm ?? 60) * 250 * Math.min(1, op)},
             geometry: {type: 'Polygon', coordinates: [anillo]}});
           break;
+        }
+        if (e.movil) {
+          // La unidad va en la cabeza de la ruta, orientada hacia donde avanza (los barcos no giran: se ven de lado).
+          const id = `movil|${encodeURIComponent(e.movil)}`;
+          if (!map.hasImage(id)) map.addImage(id, dibujarMovil(e.movil), {pixelRatio: 2});
+          const lateral = /barco|submarino|🚢|⛴|🛳/.test(e.movil);
+          moviles.push({type: 'Feature', properties: {img: id, rumbo: lateral ? 0 : rumboFinal(linea), op, tam: e.tamanoMovil ?? 1},
+            geometry: {type: 'Point', coordinates: linea[linea.length - 1]}});
         }
         const props = {color: e.color, grosor: e.grosor, op, disc: e.discontinua ? 1 : 0};
         rutas.push({type: 'Feature', properties: props, geometry: {type: 'LineString', coordinates: linea}});
@@ -435,6 +492,7 @@ export const aplicarElementos = (map: MapLibre, p: Proyecto, t: number, opts: {s
   fijar(map, 'mm-pins', fc(pins));
   fijar(map, 'mm-textos', fc(textos));
   if (map.getSource('mm-ataques')) fijar(map, 'mm-ataques', fc(ataques));
+  if (map.getSource('mm-moviles')) fijar(map, 'mm-moviles', fc(moviles));
   rotulosDeLaHistoria(map, p, t);
   fijar(map, 'mm-territorios', fc(territorios));
   fijar(map, 'mm-columnas', fc(columnas));

@@ -50,6 +50,10 @@ export type ElemRuta = Base & {
   estilo?: 'linea' | 'ataque';
   /** Ancho de la flecha de ataque, en km. */
   anchoKm?: number;
+  /** Unidad que viaja por la ruta mientras se dibuja (dron, shahed, avion, misil, barco…), vista desde arriba. */
+  movil?: string;
+  /** Tamaño de la unidad que viaja (1 = normal). */
+  tamanoMovil?: number;
 };
 
 export type ElemPin = Base & {
