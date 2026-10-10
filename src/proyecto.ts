@@ -72,6 +72,8 @@ export type ElemPin = Base & {
   /** hexagono (ficha de pie), peana (silueta de pie sobre una base hexagonal, para frentes) o unidad
    * (barco o avión pequeño y blanco, con sombra y banderita del color del bando). */
   forma?: 'hexagono' | 'peana' | 'unidad';
+  /** Rumbo de una unidad 3D (grados, 0 = norte): hacia dónde apunta el barco o el tanque. */
+  rumbo?: number;
 };
 
 export type ElemTexto = Base & {
@@ -93,6 +95,9 @@ export type ElemZona = Base & {
   discontinua: boolean;
   /** area = círculo translúcido; objetivo = doble anillo que late; radar = alcance con barrido. */
   estilo?: 'area' | 'objetivo' | 'radar';
+  /** Rayado diagonal (zona en disputa, presencia de guerrilla). Con color2, rayas de los dos bandos. */
+  trama?: boolean;
+  color2?: string;
 };
 
 /** Control territorial: el color avanza sobre el país como un frente. */
@@ -107,6 +112,36 @@ export type ElemTerritorio = Base & {
   avance: number;
   /** Fracción final cubierta (1 = todo el país). */
   hasta_fraccion: number;
+  /** Rayado diagonal en vez de color liso (control disputado o parcial). Con color2, rayas de los dos bandos. */
+  trama?: boolean;
+  color2?: string;
+};
+
+/** Foco: oscurece todo el mapa menos los países de la historia (como un foco de teatro). */
+export type ElemFoco = Base & {
+  tipo: 'foco';
+  paises: string[];
+  /** Cuánto se oscurece el resto (0,3–0,7). */
+  opacidad: number;
+};
+
+/** Tráfico: muchas unidades (barcos) que circulan sin parar por un corredor, en uno o dos sentidos. */
+export type ElemTrafico = Base & {
+  tipo: 'trafico';
+  puntos: LonLat[];
+  /** Número de unidades a la vez en el corredor. */
+  barcos: number;
+  /** Segundos que tarda una unidad en recorrer el corredor entero. */
+  vuelta: number;
+  sentido: 'ida' | 'ambos';
+  color: string;
+  /** Anchura del corredor (km): las unidades se reparten a lo ancho. */
+  anchoKm: number;
+  /** Modelo: barco, petrolero, portacontenedores, avion… (mezcla: 'mixto'). */
+  modelo: string;
+  tamano: number;
+  /** Dibujar el carril (franja suave) bajo las unidades. */
+  carril: boolean;
 };
 
 export type ElemTitulo = Base & {
@@ -152,7 +187,8 @@ export type ElemColumna = Base & {
   crece: number;
 };
 
-export type Elemento = ElemPais | ElemRuta | ElemPin | ElemTexto | ElemZona | ElemTitulo | ElemTerritorio | ElemColumna | ElemRecorte | ElemGrafico;
+export type Elemento = ElemPais | ElemRuta | ElemPin | ElemTexto | ElemZona | ElemTitulo | ElemTerritorio | ElemColumna | ElemRecorte | ElemGrafico
+  | ElemFoco | ElemTrafico;
 export type TipoElemento = Elemento['tipo'];
 
 export type EstiloId = 'atlas' | 'documental' | 'geopolitico' | 'realista' | 'noche' | 'satelite' | 'calles' | 'minimal';
@@ -178,6 +214,8 @@ export type OpcionesEstilo = {
   etalonaje: number;
   /** Desenfoque de movimiento de cine (3 vistas por fotograma; el render tarda el triple). */
   desenfoqueMovimiento?: boolean;
+  /** Unidades, fichas y peanas como piezas 3D de verdad (por defecto, sí). */
+  modelos3d?: boolean;
   idioma: 'es' | 'en';
 };
 
@@ -224,6 +262,7 @@ export const OPCIONES_POR_DEFECTO: OpcionesEstilo = {
   globo: true,
   etiquetasPaises: true,
   soloHistoria: true,
+  modelos3d: true,
   ciudades: true,
   rios: true,
   provincias: false,

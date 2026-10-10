@@ -176,3 +176,34 @@ export const flechaGruesa = (linea: LonLat[], anchoKm: number): LonLat[] => {
   anillo.push(anillo[0]);
   return anillo.map(deMerc);
 };
+
+/** Punto a la fracción f (0–1) de una línea, con su rumbo (grados) y un desplazamiento lateral en km (+ = derecha). */
+export const puntoEnLinea = (linea: LonLat[], f: number, lateralKm = 0): {en: LonLat; rumbo: number} => {
+  const m = linea.map(aMerc);
+  const tramos: number[] = [];
+  let total = 0;
+  for (let i = 0; i < m.length - 1; i++) {
+    const d = Math.hypot(m[i + 1][0] - m[i][0], m[i + 1][1] - m[i][1]);
+    tramos.push(d);
+    total += d;
+  }
+  let objetivo = Math.min(1, Math.max(0, f)) * total;
+  let i = 0;
+  while (i < tramos.length - 1 && objetivo > tramos[i]) objetivo -= tramos[i++];
+  const k = tramos[i] > 0 ? objetivo / tramos[i] : 0;
+  const a = m[i];
+  const b = m[Math.min(i + 1, m.length - 1)];
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const largo = Math.hypot(dx, dy) || 1;
+  let x = a[0] + dx * k;
+  let y = a[1] + dy * k;
+  if (lateralKm) {
+    // En Mercator, 1 km en el suelo mide 1/(R·cos φ) radianes; a la derecha del rumbo = (dy, −dx).
+    const cosLat = Math.cos(2 * Math.atan(Math.exp(y)) - Math.PI / 2);
+    const s = lateralKm / (R * Math.max(0.05, cosLat));
+    x += (dy / largo) * s;
+    y += (-dx / largo) * s;
+  }
+  return {en: deMerc([x, y]), rumbo: (grad(Math.atan2(dx, dy)) + 360) % 360};
+};

@@ -8,7 +8,14 @@ export type Trabajo = {
   id: string; fase: string; hecho: number; total: number; ruta: string | null; error: string | null;
   inicio: number; segundos: number; mb?: number; codec?: string; formato?: string;
   calidad?: {movimientoMedio: number; saltos: {t: number; intensidad: number}[]};
+  /** Tarjeta gráfica con la que se renderizó y si iba por GPU (false = software, lento). */
+  tarjeta?: string; gpu?: boolean; codificador?: string;
 };
+
+/** Una línea para el chat: con qué se renderizó. */
+export const textoTarjeta = (t: Trabajo) => !t.tarjeta ? ''
+  : `${t.gpu === false ? '🐢 Sin tarjeta gráfica (software): ' : '⚡ Tarjeta gráfica: '}${t.tarjeta.replace(/^ANGLE \((.*)\)$/, '$1')}` +
+    (t.codificador === 'hardware' ? ' · codificador por hardware' : '');
 
 /** Resumen del control de calidad en una línea. */
 export const textoCalidad = (c?: Trabajo['calidad']) => !c ? ''
@@ -40,7 +47,7 @@ export const seguirVideo = (id: string, avisar: (texto: string) => void) => {
   const pastilla = document.getElementById('render-estado') as HTMLDivElement;
   const evento = (t: Trabajo) => window.dispatchEvent(new CustomEvent('ee-exportacion', {detail: {
     fase: faseSimple(t.fase), inicio: t.inicio, segundos: t.segundos, ruta: t.ruta, mb: t.mb, error: t.error,
-    calidad: textoCalidad(t.calidad)}}));
+    calidad: textoCalidad(t.calidad), tarjeta: textoTarjeta(t)}}));
   let primero = true;
   const tic = async () => {
     const t = await estadoVideo(id).catch(() => null);

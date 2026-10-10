@@ -1,7 +1,8 @@
 import type {FilterSpecification, GeoJSONSource, Map as MapLibre} from 'maplibre-gl';
 import polygonClipping, {type MultiPolygon, type Polygon as PolyClip} from 'polygon-clipping';
-import {circulo, densificar, flechaGruesa, recortar, rumboFinal, visibilidad} from './geo';
+import {circulo, densificar, flechaGruesa, puntoEnLinea, recortar, rumboFinal, visibilidad} from './geo';
 import {silueta} from './iconos';
+import {fijarModelos, modeloPara, type Modelo3d} from './modelos3d';
 import type {ElemPin, Elemento, Proyecto} from './proyecto';
 
 // ── Imágenes subidas (retratos de fichas, logo) ────────────────────────────────────
@@ -207,23 +208,25 @@ const hexagono = (c: CanvasRenderingContext2D, cx: number, cy: number, r: number
   c.closePath();
 };
 
-const dibujarFicha = (id: string) => {
+const dibujarFicha = (id: string, soloCara = false) => {
   const [, color, fondo, icono, clave, forma] = id.split('|').map(decodeURIComponent);
-  if (forma === 'peana') return dibujarPeana(color, icono);
+  if (forma === 'peana' && !soloCara) return dibujarPeana(color, icono);
   if (forma === 'unidad') return dibujarUnidad(color, icono);
   const W = 168;
-  const H = 176;
+  const H = soloCara ? 168 : 176;
   return lienzo(W, H, (c) => {
     const cx = W / 2;
     const cy = 84;
-    c.shadowColor = 'rgba(0,0,0,0.35)';
-    c.shadowBlur = 8;
-    c.shadowOffsetY = 4;
-    // Canto de la ficha (grosor): da volumen, como una pieza de juego de mesa.
-    hexagono(c, cx, cy + 9, 76);
-    c.fillStyle = '#B9B2A6';
-    c.fill();
-    c.shadowColor = 'transparent';
+    if (!soloCara) {
+      c.shadowColor = 'rgba(0,0,0,0.35)';
+      c.shadowBlur = 8;
+      c.shadowOffsetY = 4;
+      // Canto de la ficha (grosor): da volumen, como una pieza de juego de mesa.
+      hexagono(c, cx, cy + 9, 76);
+      c.fillStyle = '#B9B2A6';
+      c.fill();
+      c.shadowColor = 'transparent';
+    }
     hexagono(c, cx, cy, 76);
     c.fillStyle = '#FFFFFF';
     c.fill();
@@ -269,6 +272,36 @@ const dibujarFicha = (id: string) => {
       c.drawImage(t, 0, 0);
     }
   });
+};
+
+// ── Caras de las piezas 3D (fichas y peanas) ─────────────────────────────────────────
+
+const caras = new Map<string, HTMLCanvasElement>();
+const aCanvas = (img: ImageData) => {
+  const cv = document.createElement('canvas');
+  cv.width = img.width;
+  cv.height = img.height;
+  cv.getContext('2d')!.putImageData(img, 0, 0);
+  return cv;
+};
+/** Cara impresa de una ficha 3D (hexágono con icono o retrato) o figura de pie de una peana 3D. */
+const caraDe = (e: ElemPin) => {
+  const id = idFicha(e);
+  let cv = caras.get(id);
+  if (!cv) {
+    cv = e.forma === 'peana' ? aCanvas(lienzo(128, 128, (c) => {
+      const forma = silueta(!e.icono || e.icono === '🪖' || e.icono === 'soldado' ? 'infante' : e.icono) ?? silueta('infante')!;
+      c.translate(14, 14);
+      const luz = c.createLinearGradient(20, 0, 80, 100);
+      luz.addColorStop(0, '#4A4036');
+      luz.addColorStop(0.55, '#1B1712');
+      luz.addColorStop(1, '#0C0A08');
+      c.fillStyle = luz;
+      c.fill(forma);
+    })) : aCanvas(dibujarFicha(id, true));
+    caras.set(id, cv);
+  }
+  return {cara: cv, clave: id};
 };
 
 // ── Imágenes generadas en tiempo de ejecución ──────────────────────────────────────
@@ -326,6 +359,51 @@ const fijar = (map: MapLibre, fuente: string, datos: FC) => {
   s?.setData(datos);
 };
 
+// ── Foco, tramas y tráfico ──────────────────────────────────────────────────────────
+
+/** Máscara del foco: el mundo menos los países de la historia (se calcula una vez por combinación). */
+const mascaras = new Map<string, MultiPolygon | null>();
+const mascaraFoco = (isos: string[]) => {
+  const clave = [...isos].sort().join(',');
+  if (mascaras.has(clave)) return mascaras.get(clave)!;
+  const geos = isos.map((i) => geometrias.get(i)).filter(Boolean) as MultiPolygon[];
+  if (!geos.length) return null; // las geometrías aún no han llegado: se reintenta en el siguiente fotograma
+  const mundo: PolyClip = [[[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]]];
+  let r: MultiPolygon | null = null;
+  try {
+    r = polygonClipping.difference(mundo, ...geos);
+  } catch {
+    r = null;
+  }
+  mascaras.set(clave, r);
+  return r;
+};
+
+/** Rayado diagonal a 45° (zonas en disputa, guerrilla): una o dos tintas sobre transparente. */
+const idTrama = (c1: string, c2?: string) => `trama|${c1}|${c2 ?? ''}`;
+const dibujarTrama = (c1: string, c2?: string) => lienzo(32, 32, (c) => {
+  c.lineWidth = 5;
+  c.lineCap = 'square';
+  const raya = (o: number, color: string) => {
+    c.strokeStyle = color;
+    for (const d of [-32, 0, 32]) {
+      c.beginPath();
+      c.moveTo(o + d, 32);
+      c.lineTo(o + d + 32, 0);
+      c.stroke();
+    }
+  };
+  raya(0, c1);
+  if (c2) raya(16, c2);
+});
+
+/** Modelos de mercante para el tráfico mixto, repartidos de forma fija (siempre los mismos en cada fotograma). */
+const MERCANTES = ['portacontenedores', 'petrolero', 'portacontenedores', 'barco', 'petrolero'];
+const azar = (n: number) => {
+  const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+  return x - Math.floor(x);
+};
+
 // ── Solo los rótulos de la historia ────────────────────────────────────────────────
 // Un mapa limpio, como en los documentales: el nombre de los países que intervienen y nada más. Las ciudades y
 // mares del mapa base se ocultan; los lugares que importan los nombra la pieza (pins, textos, zonas).
@@ -369,6 +447,12 @@ export const aplicarElementos = (map: MapLibre, p: Proyecto, t: number, opts: {s
   const columnas: GeoJSON.Feature[] = [];
   const ataques: GeoJSON.Feature[] = [];
   const moviles: GeoJSON.Feature[] = [];
+  const modelos: Modelo3d[] = [];
+  const focos: GeoJSON.Feature[] = [];
+  const tramas: GeoJSON.Feature[] = [];
+  const carriles: GeoJSON.Feature[] = [];
+  // Piezas en 3D de verdad (Three.js): unidades, fichas y peanas. Se puede apagar en Opciones.
+  const usa3d = p.opciones.modelos3d !== false;
   const estadoPaises = new Map<string, {color: string; op: number; opBorde: number}>();
 
   for (const e of p.elementos as Elemento[]) {
@@ -400,7 +484,11 @@ export const aplicarElementos = (map: MapLibre, p: Proyecto, t: number, opts: {s
             geometry: {type: 'Polygon', coordinates: [anillo]}});
           break;
         }
-        if (e.movil) {
+        const modeloMovil = e.movil && usa3d ? modeloPara(e.movil) : null;
+        if (modeloMovil) {
+          modelos.push({modelo: modeloMovil, en: linea[linea.length - 1] as [number, number], rumbo: rumboFinal(linea),
+            color: e.color, op, tam: e.tamanoMovil ?? 1});
+        } else if (e.movil) {
           // La unidad va en la cabeza de la ruta, orientada hacia donde avanza (los barcos no giran: se ven de lado).
           const id = `movil|${encodeURIComponent(e.movil)}`;
           if (!map.hasImage(id)) map.addImage(id, dibujarMovil(e.movil), {pixelRatio: 2});
@@ -419,10 +507,25 @@ export const aplicarElementos = (map: MapLibre, p: Proyecto, t: number, opts: {s
       case 'pin': {
         // La imagen de la ficha se crea aquí y no al pedirla el mapa: el render de exportación
         // pinta un solo fotograma y no espera a 'styleimagemissing', así que la ficha no salía.
-        if (e.estilo === 'ficha' && !map.hasImage(idFicha(e))) map.addImage(idFicha(e), dibujarFicha(idFicha(e)), {pixelRatio: 2});
         const edad = t - e.desde;
         // Rebote al aparecer.
         const escala = edad < 0 ? 1 : Math.min(1.15, 1 - Math.exp(-edad * 9) * Math.cos(edad * 16));
+        if (e.estilo === 'ficha' && usa3d) {
+          // Pieza 3D: unidad (modelo del icono), peana o ficha hexagonal, siempre de cara a la cámara salvo las unidades.
+          const forma = e.forma ?? 'hexagono';
+          const modeloUnidad = forma === 'unidad' ? modeloPara(e.icono || 'barco') : null;
+          if (forma !== 'unidad' || modeloUnidad) {
+            const base = {en: e.en as [number, number], color: e.color, op, tam: (e.tamano ?? 1) * Math.max(0, escala)};
+            if (modeloUnidad) modelos.push({...base, modelo: modeloUnidad, rumbo: e.rumbo ?? 0});
+            else modelos.push({...base, modelo: forma === 'peana' ? 'peana' : 'ficha', rumbo: map.getBearing(),
+              tam: base.tam * (forma === 'peana' ? 1.05 : 1.1), ...caraDe(e)});
+            pins.push({type: 'Feature', geometry: {type: 'Point', coordinates: e.en}, properties: {
+              texto: e.texto, color: e.color, estilo: 'modelo', etiqueta: e.etiqueta, op, escala: 1, radioPulso: 0, opPulso: 0,
+              ficha: '', tam: e.tamano ?? 1}});
+            break;
+          }
+        }
+        if (e.estilo === 'ficha' && !map.hasImage(idFicha(e))) map.addImage(idFicha(e), dibujarFicha(idFicha(e)), {pixelRatio: 2});
         const ciclo = ((edad % 1.6) + 1.6) % 1.6 / 1.6;
         pins.push({type: 'Feature', geometry: {type: 'Point', coordinates: e.en}, properties: {
           texto: e.texto, color: e.color, estilo: e.estilo, etiqueta: e.etiqueta, op,
@@ -456,8 +559,45 @@ export const aplicarElementos = (map: MapLibre, p: Proyecto, t: number, opts: {s
           anillo(r, {relleno: 0.32, disc: 0});
           const ciclo = (((t - e.desde) % 1.8) + 1.8) % 1.8 / 1.8;
           anillo(r * ciclo, {relleno: 0.12 * (1 - ciclo), disc: 0, op: op * (1 - ciclo)});
+        } else if (e.trama) {
+          // Zona en disputa o con presencia de guerrilla: rayado y borde discontinuo, relleno muy suave.
+          anillo(r, {relleno: 0.08, disc: 1});
+          const img = idTrama(e.color, e.color2);
+          if (!map.hasImage(img)) map.addImage(img, dibujarTrama(e.color, e.color2), {pixelRatio: 2});
+          tramas.push({type: 'Feature', properties: {img, op: op * 0.85}, geometry: {type: 'Polygon', coordinates: [circulo(e.en, r)]}});
         } else {
           anillo(r, {});
+        }
+        break;
+      }
+      case 'foco': {
+        const m = mascaraFoco(e.paises);
+        if (m) focos.push({type: 'Feature', properties: {op: op * e.opacidad}, geometry: {type: 'MultiPolygon', coordinates: m}});
+        break;
+      }
+      case 'trafico': {
+        if (e.puntos.length < 2) break;
+        const linea = densificar(e.puntos, 'recta');
+        if (e.carril) {
+          carriles.push({type: 'Feature', properties: {color: e.color, op}, geometry: {type: 'LineString', coordinates: linea}});
+        }
+        const n = Math.max(1, Math.min(80, Math.round(e.barcos)));
+        const edad = t - e.desde;
+        for (let k = 0; k < n; k++) {
+          const vuelta = e.sentido === 'ambos' && k % 2 === 1;
+          // Cada unidad con su propio ritmo (±15 %) y su sitio a lo ancho del corredor; se reparten a lo largo.
+          const ritmo = 1 + (azar(k) - 0.5) * 0.3;
+          const fBase = (k / n + azar(k + 50) * 0.5 / n + (edad / Math.max(1, e.vuelta)) * ritmo) % 1;
+          const f = vuelta ? 1 - fBase : fBase;
+          // Los de vuelta van por su lado del corredor (separación de tráfico, como en un estrecho real).
+          const lado = e.sentido === 'ambos' ? (vuelta ? -1 : 1) * (0.25 + azar(k + 9) * 0.25) : (azar(k + 9) - 0.5);
+          // lado > 0: a la derecha de la línea; los de vuelta (lado < 0) quedan a la derecha de su propio rumbo.
+          const pos = puntoEnLinea(linea, f, lado * e.anchoKm);
+          // Entran y salen del corredor con fundido.
+          const borde = Math.min(1, Math.min(fBase, 1 - fBase) / 0.06);
+          const modelo = e.modelo === 'mixto' ? MERCANTES[k % MERCANTES.length] : (modeloPara(e.modelo) ?? 'barco');
+          modelos.push({modelo, en: pos.en, rumbo: (pos.rumbo + (vuelta ? 180 : 0)) % 360, color: e.color,
+            op: op * borde, tam: e.tamano * (0.85 + azar(k + 3) * 0.3)});
         }
         break;
       }
@@ -478,8 +618,13 @@ export const aplicarElementos = (map: MapLibre, p: Proyecto, t: number, opts: {s
         const f = e.avance > 0 ? suave(Math.min(1, Math.max(0, (t - e.desde) / e.avance))) : 1;
         const mp = barrido(e.iso, e.direccion, f * e.hasta_fraccion);
         if (mp && mp.length) {
-          territorios.push({type: 'Feature', properties: {color: e.color, op: op * e.opacidad, borde: oscurecer(e.color, 0.55)},
-            geometry: {type: 'MultiPolygon', coordinates: mp}});
+          territorios.push({type: 'Feature', properties: {color: e.color, op: op * e.opacidad * (e.trama ? 0.25 : 1),
+            borde: oscurecer(e.color, 0.55)}, geometry: {type: 'MultiPolygon', coordinates: mp}});
+          if (e.trama) {
+            const img = idTrama(e.color, e.color2);
+            if (!map.hasImage(img)) map.addImage(img, dibujarTrama(e.color, e.color2), {pixelRatio: 2});
+            tramas.push({type: 'Feature', properties: {img, op}, geometry: {type: 'MultiPolygon', coordinates: mp}});
+          }
         }
         break;
       }
@@ -493,6 +638,10 @@ export const aplicarElementos = (map: MapLibre, p: Proyecto, t: number, opts: {s
   fijar(map, 'mm-textos', fc(textos));
   if (map.getSource('mm-ataques')) fijar(map, 'mm-ataques', fc(ataques));
   if (map.getSource('mm-moviles')) fijar(map, 'mm-moviles', fc(moviles));
+  if (map.getSource('mm-pins')) fijarModelos(map, modelos);
+  if (map.getSource('mm-foco')) fijar(map, 'mm-foco', fc(focos));
+  if (map.getSource('mm-tramas')) fijar(map, 'mm-tramas', fc(tramas));
+  if (map.getSource('mm-carriles')) fijar(map, 'mm-carriles', fc(carriles));
   rotulosDeLaHistoria(map, p, t);
   fijar(map, 'mm-territorios', fc(territorios));
   fijar(map, 'mm-columnas', fc(columnas));

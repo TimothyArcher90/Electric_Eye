@@ -37,7 +37,15 @@ export const vistaEn = (kfsDesordenados: Keyframe[], t: number, anchoPx: number)
   const kfs = ordenar(kfsDesordenados);
   if (kfs.length === 0) return null;
   const a0 = kfs[0];
-  if (t <= a0.t || kfs.length === 1) return vistaDe(a0);
+  if (t <= a0.t) return vistaDe(a0);
+  // Después de la última toma la cámara no se queda muerta: sigue con una deriva mínima (acercamiento de 0,03
+  // niveles de zoom/s y medio grado por segundo de giro), como un operador que mantiene el plano vivo.
+  const ultima = kfs[kfs.length - 1];
+  if (t > ultima.t) {
+    const dt = t - ultima.t;
+    const v = vistaDe(ultima);
+    return {...v, zoom: v.zoom + 0.03 * dt, rumbo: v.rumbo - 0.5 * dt};
+  }
   for (let i = 0; i < kfs.length - 1; i++) {
     const a = kfs[i];
     const b = kfs[i + 1];

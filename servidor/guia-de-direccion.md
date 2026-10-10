@@ -7,7 +7,7 @@ y entregas una pieza que se lea a la primera. Estilo por defecto: **atlas** (atl
 
 1. `buscar_lugar` para cada sitio que vayas a usar (coordenadas e ISO reales; nunca de memoria).
 2. `nuevo_proyecto` (formato y duración según el uso: 16:9 para YouTube, 9:16 para Reels/TikTok).
-3. `poner_camara` con 3–6 tomas.
+3. `planos_de_camara` (preferido: planos de documental encadenados) o `poner_camara` con 3–6 tomas.
 4. `anadir_elementos` en orden de aparición.
 5. `vista_previa` en 2–3 momentos clave. **Mira la imagen**: ¿se lee el protagonista?, ¿tapa algo un rótulo?, ¿está
    el encuadre centrado en la acción? Corrige con `editar_elemento` o `poner_camara` y vuelve a mirar.
@@ -37,6 +37,12 @@ Taiwán), su nombre puede quedar fuera. Si debe leerse, añade un `texto` con el
 - Un protagonista por plano. El segundo color entra después, cuando el primero ya está asentado.
 - Los países se resaltan enteros (`pais`). Si un bando gana terreno, usa `territorio` (frente): `direccion` es hacia
   dónde avanza (0 = norte, 90 = este, 180 = sur, 270 = oeste) y `hasta_fraccion` cuánto cubre.
+- **Piezas en 3D**: fichas, peanas y unidades son modelos 3D de verdad (con luz, sombra y grosor) que se ven con
+  volumen al inclinar o girar la cámara. Las fichas y peanas miran siempre a cámara; las unidades (`forma: "unidad"`)
+  apuntan a su `rumbo` (grados, 0 = norte): pon el barco o el tanque mirando hacia donde va.
+  Modelos 3D: `tanque`, `barco` (destructor), `portaaviones`, `submarino`, `petrolero`, `portacontenedores`, `avion`
+  (caza), `helicoptero`, `dron`, `dron-ala`, `shahed`, `enjambre`, `misil`. Los aviones, drones y misiles vuelan por
+  encima del mapa con su sombra en el suelo.
 - Fichas (`ficha`): hexágonos de pie con silueta propia. `icono` por nombre: `soldado`, `tanque`, `barco`,
   `submarino`, `avion`, `helicoptero`, `dron`, `misil`, `explosion`, `ancla` (base naval), `nuclear`, `petroleo`,
   `fabrica`, `mando`, `satelite`, `infante`, y drones: `dron`, `dron-ala`, `shahed`, `enjambre`. (Los emojis de antes también valen: 🪖 ✈️ 🚢 🚀 💥 ⚓ ☢️ 🛢️ 🏭 ⭐.) Línea de frente = 4–10 fichas
@@ -63,6 +69,16 @@ Taiwán), su nombre puede quedar fuera. Si debe leerse, añade un `texto` con el
   Escala real: a zoom 5–6 usa 40–200 km de altura y 15–40 km de radio; a zoom 3–4, hasta 600 km. Requiere
   inclinación ≥ 45°. No pongas columnas delante de fichas o rótulos: muévelas o baja la altura.
 - `titulo` para el gancho (0,3–3,5 s). Pocas palabras, en mayúsculas.
+- **Foco** (`foco`): oscurece todo menos los países de la historia (`paises`: lista). Es el gesto más "documental":
+  úsalo al presentar al protagonista (desde 1–2 s, `opacidad` 0,35–0,55). Uno por pieza.
+- **Trama** (`trama: true` en `zona` o `territorio`): rayado diagonal para control disputado, presencia de guerrilla
+  o zonas reclamadas. Con `color2`, rayas de los dos bandos (zona disputada entre dos facciones). Regla: color liso =
+  control; rayado = disputa o presencia; borde discontinuo = zona de operaciones.
+- **Tráfico** (`trafico`): muchos barcos 3D que circulan sin parar por un corredor (`lugares` o `puntos` por el mar,
+  nunca cruzando tierra), en `sentido` `ambos` (cada sentido por su lado, como en un estrecho real) o `ida`.
+  `barcos` 12–40, `vuelta` 15–30 s (lo que tarda uno en recorrerlo), `anchoKm` 15–40, `modelo` `mixto` (petroleros,
+  portacontenedores y cargueros) o uno concreto. Para estrechos (Malaca, Ormuz, Bab el-Mandeb, Suez): 2–3 corredores
+  que confluyen en el estrecho.
 - Archivo sobre el mapa (`recorte`): una foto que el usuario te da (`ruta` a un archivo o `url`) en un marco `crt`
   (televisor antiguo, el de la referencia), `papel` o `limpio`, a un lado (`posicion`), con `pie` corto. 3–5 s. Que
   no tape la acción: si la acción está a la izquierda, el recorte a la derecha. Nunca inventes ni busques fotos por tu
@@ -72,6 +88,14 @@ Taiwán), su nombre puede quedar fuera. Si debe leerse, añade un `texto` con el
 
 ## Cámara
 
+- **Usa `planos_de_camara`**: planos de documental encadenados que la cámara recorre sin pararse.
+  - `establecer` (3–5 s): plano general al empezar, casi quieto (acercamiento de ~0,05 de zoom/s).
+  - `acercar` (3–6 s): de la región al detalle, con la inclinación subiendo de ~28° a ~55°. Respeta 0,3–0,6 de zoom/s.
+  - `orbita` (4–8 s): giro lento (3–6°/s) alrededor del punto caliente; luce las piezas 3D.
+  - `deriva` (3–6 s): desplazamiento lento mientras se narra; nunca dejes la cámara muerta.
+  - `seguir_ruta` (duración = `trazo` de la ruta): acompaña la punta de una ruta o un movil; misma `desde`.
+  - `alejar` (2–4 s): revelar el contexto al final ("y esto es solo una parte…").
+  Orden típico de una pieza de 15–20 s: establecer → acercar → orbita o seguir_ruta → alejar.
 - Inclinación 45–60° (el atlas se lee en perspectiva). Planos generales a 30–40°.
 - Zoom: 2–3 continente, 3,5–4,5 región (Golfo, Indochina), 5–6 país, 6,5–8 detalle (estrecho, frente).
 - Rumbo: −15° a 15° para dar vida, sin girar más de 20° entre tomas.
@@ -110,6 +134,21 @@ Taiwán), su nombre puede quedar fuera. Si debe leerse, añade un `texto` con el
 {"tipo": "texto", "en": [60, 22], "texto": "Mar Arábigo", "cursiva": true, "tamano": 22, "desde": 2}
 {"tipo": "titulo", "texto": "El estrecho de Ormuz", "subtitulo": "Por donde sale el petróleo del Golfo", "desde": 0.3}
 {"tipo": "pin", "lugar": "Teherán", "texto": "TEHERÁN", "estilo": "capital", "desde": 3}
+{"tipo": "ficha", "en": [56.8, 25.6], "icono": "barco", "forma": "unidad", "rumbo": 300, "color": "aliado", "desde": 6}
+{"tipo": "foco", "paises": ["Irán"], "opacidad": 0.45, "desde": 1}
+{"tipo": "zona", "en": [-72.3, 7.9], "radioKm": 60, "trama": true, "color": "#7A3B2E", "color2": "#3F6E4A", "desde": 4}
+{"tipo": "territorio", "pais": "Venezuela", "color": "#7A3B2E", "trama": true, "direccion": 90, "hasta_fraccion": 0.3, "desde": 3}
+{"tipo": "trafico", "lugares": ["Océano Índico", "Estrecho de Malaca", "Singapur"], "barcos": 24, "vuelta": 22, "modelo": "mixto", "desde": 2}
+```
+
+```jsonc
+// planos_de_camara
+{"planos": [
+  {"tipo": "establecer", "lugar": "Golfo Pérsico", "zoom": 4, "duracion": 3},
+  {"tipo": "acercar", "hasta_lugar": "Estrecho de Ormuz", "zoom_final": 6, "duracion": 4.5},
+  {"tipo": "orbita", "lugar": "Estrecho de Ormuz", "zoom": 6, "velocidad": 4, "duracion": 6},
+  {"tipo": "alejar", "lugar": "Estrecho de Ormuz", "zoom": 6, "zoom_final": 4.2, "duracion": 3}
+]}
 ```
 
 Campos comunes: `desde` (s), `hasta` (s o null = hasta el final), `fundido` (s).

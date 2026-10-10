@@ -3,6 +3,7 @@ import './style.css';
 import maplibregl from 'maplibre-gl';
 import {buscar, ciudadCercana} from './buscador';
 import {desfaseZoom, ordenar, vistaEn} from './camara';
+import {precargarModelos} from './modelos3d';
 import {aplicarElementos, borrador, olvidarEstado, precargarGeometrias, precargarImagenes, registrarImagenes} from './capas';
 import {ATRIBUCION, BANDOS, construirEstilo, NOMBRES_ESTILO, paletaDe, PALETAS} from './estilos';
 import {capturarPNG, diagnosticar, exportarVideo} from './exportar';
@@ -85,7 +86,7 @@ const map = new maplibregl.Map({
   center: [20, 25],
   zoom: 1.6,
   attributionControl: {compact: true},
-  canvasContextAttributes: {antialias: true},
+  canvasContextAttributes: {antialias: true, powerPreference: 'high-performance'},
   maxPitch: 80,
 });
 registrarImagenes(map);
@@ -215,11 +216,11 @@ const ajustarFps = (s: number) => Math.round(s * p.fps) / p.fps;
 
 const COLOR_TIPO: Record<TipoElemento, string> = {
   pais: '#8A5CF6', ruta: '#E0402B', pin: '#F59E0B', texto: '#10B981', zona: '#3B82F6', titulo: '#EC4899', territorio: '#5C844E', columna: '#7A5C3A',
-  recorte: '#64748B', grafico: '#B45309',
+  recorte: '#64748B', grafico: '#B45309', foco: '#1F2937', trafico: '#0E7490',
 };
 const NOMBRE_TIPO: Record<TipoElemento, string> = {
   pais: 'País', ruta: 'Ruta', pin: 'Pin', texto: 'Texto', zona: 'Zona', titulo: 'Título', territorio: 'Territorio', columna: 'Columna 3D',
-  recorte: 'Recorte', grafico: 'Gráfico',
+  recorte: 'Recorte', grafico: 'Gráfico', foco: 'Foco', trafico: 'Tráfico',
 };
 
 function actualizarCabezal() {
@@ -520,7 +521,7 @@ const reducirImagen = (f: File, lado: number) => new Promise<string>((ok, mal) =
 
 /** Imágenes y geometrías que el mapa necesita listas antes de pintar. */
 const asegurarRecursos = async () => {
-  await Promise.all([precargarImagenes(p), precargarGeometrias()]);
+  await Promise.all([precargarImagenes(p), precargarGeometrias(), precargarModelos()]);
   aplicar(false);
 };
 
@@ -761,7 +762,7 @@ function renderOpciones() {
   const o = p.opciones;
   const chk = (etq: string, k: keyof OpcionesEstilo, recarga = true) => {
     const l = el('label');
-    const i = el('input', {type: 'checkbox', checked: Boolean(o[k])});
+    const i = el('input', {type: 'checkbox', checked: k === 'modelos3d' ? o[k] !== false : Boolean(o[k])});
     i.addEventListener('change', () => {
       (o as Record<string, unknown>)[k] = i.checked;
       confirmar();
@@ -795,6 +796,7 @@ function renderOpciones() {
     chk('Nombres de países', 'etiquetasPaises'),
     chk('Solo rótulos de la historia', 'soloHistoria'),
     chk('Desenfoque de movimiento (render ×3)', 'desenfoqueMovimiento'),
+    chk('Piezas en 3D (unidades, fichas, peanas)', 'modelos3d', false),
     chk('Ciudades', 'ciudades'),
     chk('Ríos', 'rios'),
     chk('Mares', 'mares'),

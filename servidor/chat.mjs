@@ -47,14 +47,14 @@ const linea = (res, datos) => res.write(`${JSON.stringify(datos)}\n`);
 
 const NOMBRES = {
   guia_de_direccion: 'Leyendo la guía', buscar_lugar: 'Buscando lugares', nuevo_proyecto: 'Creando el proyecto',
-  configurar_estilo: 'Ajustando el estilo', cambiar_formato: 'Cambiando el formato', poner_camara: 'Moviendo la cámara',
+  configurar_estilo: 'Ajustando el estilo', cambiar_formato: 'Cambiando el formato', poner_camara: 'Moviendo la cámara', planos_de_camara: 'Montando los planos de cámara',
   anadir_elementos: 'Añadiendo elementos', editar_elemento: 'Editando', borrar_elementos: 'Borrando',
   vista_previa: 'Revisando un fotograma', exportar_png: 'Guardando PNG', exportar_video: 'Exportando el vídeo',
   estado_exportacion: 'Comprobando la exportación', guardar_proyecto: 'Guardando el proyecto',
   abrir_proyecto: 'Abriendo proyecto', ver_estado: 'Mirando el editor', carpeta_de_salida: 'Carpeta de salida',
 };
 
-const MODIFICAN = new Set(['nuevo_proyecto', 'configurar_estilo', 'cambiar_formato', 'poner_camara', 'anadir_elementos',
+const MODIFICAN = new Set(['nuevo_proyecto', 'configurar_estilo', 'cambiar_formato', 'poner_camara', 'planos_de_camara', 'anadir_elementos',
   'editar_elemento', 'borrar_elementos', 'abrir_proyecto']);
 
 export const reiniciarChat = () => {

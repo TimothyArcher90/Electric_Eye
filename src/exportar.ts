@@ -9,6 +9,7 @@ import {
   WebMOutputFormat,
 } from 'mediabunny';
 import {desfaseZoom, type Vista, vistaEn} from './camara';
+import {precargarModelos} from './modelos3d';
 import {aplicarElementos, precargarGeometrias, precargarImagenes, registrarImagenes} from './capas';
 import {construirEstilo, paletaDe} from './estilos';
 import {cargarFuentes, componerMapa, pintarOverlay} from './overlay';
@@ -43,7 +44,7 @@ class Renderizador {
   }
 
   async iniciar() {
-    await Promise.all([precargarImagenes(this.p), precargarGeometrias(), cargarFuentes()]);
+    await Promise.all([precargarImagenes(this.p), precargarGeometrias(), cargarFuentes(), precargarModelos()]);
     const estilo = await construirEstilo(this.p.estilo, this.p.opciones, this.p.preset);
     this.map = new maplibregl.Map({
       container: this.cont,
@@ -52,7 +53,8 @@ class Renderizador {
       interactive: false,
       attributionControl: false,
       fadeDuration: 0, // sin fundidos de etiquetas: cada fotograma es exacto
-      canvasContextAttributes: {preserveDrawingBuffer: true, antialias: true},
+      // Pide la tarjeta gráfica potente (en portátiles con dos, la dedicada).
+      canvasContextAttributes: {preserveDrawingBuffer: true, antialias: true, powerPreference: 'high-performance'},
       maxCanvasSize: [8192, 8192],
     });
     registrarImagenes(this.map);
@@ -113,6 +115,14 @@ class Renderizador {
     };
   }
 
+  /** Tarjeta gráfica con la que dibuja el navegador (para saber si el render va por GPU o por software). */
+  tarjeta() {
+    const gl = this.map.getCanvas().getContext('webgl2') ?? this.map.getCanvas().getContext('webgl');
+    if (!gl) return 'desconocida';
+    const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    return String(ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
+  }
+
   destruir() {
     this.map?.remove();
     this.cont.remove();
@@ -149,7 +159,7 @@ export const capturarPNG = async (p: Proyecto, t: number, anchoCss: number, vist
 
 export const exportarVideo = async (
   p: Proyecto, anchoCss: number, progreso: Progreso, cancelado: () => boolean, vista: Vista | null = null,
-): Promise<{blob: Blob; extension: string; codec: string; calidad: ReturnType<typeof analizarCambios>}> => {
+): Promise<{blob: Blob; extension: string; codec: string; calidad: ReturnType<typeof analizarCambios>; tarjeta: string; codificador: string}> => {
   const r = new Renderizador(p, anchoCss, vista);
   try {
     progreso(0, 1, 'Cargando mapa');
@@ -164,7 +174,16 @@ export const exportarVideo = async (
     if (!codec) throw new Error('Este navegador no puede codificar vídeo. Usa Chrome o Edge actualizados.');
 
     const output = new Output({format: formato, target: new BufferTarget()});
-    const fuente = new CanvasSource(r.lienzo, {codec, bitrate: QUALITY_VERY_HIGH, keyFrameInterval: 2});
+    // Codificador de vídeo de la tarjeta gráfica (NVENC, Quick Sync, AMF…) si el navegador lo ofrece.
+    let aceleracion: 'prefer-hardware' | 'no-preference' = 'no-preference';
+    if (codec === 'avc' && typeof VideoEncoder !== 'undefined') {
+      const prueba = await VideoEncoder.isConfigSupported({codec: 'avc1.640033', width: p.ancho, height: p.alto,
+        hardwareAcceleration: 'prefer-hardware'}).catch(() => null);
+      if (prueba?.supported) aceleracion = 'prefer-hardware';
+    }
+    const fuente = new CanvasSource(r.lienzo, {codec, bitrate: QUALITY_VERY_HIGH, keyFrameInterval: 2, hardwareAcceleration: aceleracion});
+    const tarjeta = r.tarjeta();
+    console.log(`[exportar] tarjeta: ${tarjeta} · codificador: ${aceleracion === 'prefer-hardware' ? 'hardware' : 'automático'}`);
     output.addVideoTrack(fuente, {frameRate: p.fps});
     await output.start();
 
@@ -221,7 +240,7 @@ export const exportarVideo = async (
     await output.finalize();
     const buf = (output.target as BufferTarget).buffer!;
     return {blob: new Blob([buf], {type: formato.mimeType}), extension: formato.fileExtension, codec,
-      calidad: analizarCambios(cambios, p.fps)};
+      calidad: analizarCambios(cambios, p.fps), tarjeta, codificador: aceleracion === 'prefer-hardware' ? 'hardware' : 'automático'};
   } finally {
     r.destruir();
   }

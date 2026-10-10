@@ -172,6 +172,9 @@ const fuentesBase = (): Record<string, SourceSpecification> => ({
   'mm-flechas': {type: 'geojson', data: {type: 'FeatureCollection', features: []}},
   'mm-ataques': {type: 'geojson', data: {type: 'FeatureCollection', features: []}},
   'mm-moviles': {type: 'geojson', data: {type: 'FeatureCollection', features: []}},
+  'mm-foco': {type: 'geojson', data: {type: 'FeatureCollection', features: []}},
+  'mm-tramas': {type: 'geojson', data: {type: 'FeatureCollection', features: []}},
+  'mm-carriles': {type: 'geojson', data: {type: 'FeatureCollection', features: []}},
   'mm-pins': {type: 'geojson', data: {type: 'FeatureCollection', features: []}},
   'mm-textos': {type: 'geojson', data: {type: 'FeatureCollection', features: []}},
   'mm-borrador': {type: 'geojson', data: {type: 'FeatureCollection', features: []}},
@@ -298,6 +301,16 @@ const capasBase = (id: EstiloId, c: Paleta, o: OpcionesEstilo, rampa: [number, s
 
 /** Anotaciones del proyecto: países resaltados (borde), zonas, rutas, pines y textos. */
 const capasAnotacion = (c: Paleta): LayerSpecification[] => [
+  // Foco: todo lo que no es la historia, oscurecido (los países protagonistas quedan iluminados).
+  {id: 'mm-foco', type: 'fill', source: 'mm-foco', paint: {'fill-color': '#1C1611', 'fill-opacity': ['get', 'op']}},
+  // Rayado de zonas en disputa o con guerrilla.
+  {id: 'mm-tramas', type: 'fill', source: 'mm-tramas', paint: {'fill-pattern': ['get', 'img'], 'fill-opacity': ['get', 'op']}},
+  // Corredores de tráfico: franja ancha y difusa con un filo fino en el centro (como la densidad de AIS).
+  {id: 'mm-carriles-halo', type: 'line', source: 'mm-carriles', layout: {'line-cap': 'round', 'line-join': 'round'}, paint: {
+    'line-color': ['get', 'color'], 'line-opacity': ['*', 0.22, ['get', 'op']], 'line-blur': 14,
+    'line-width': ['interpolate', ['exponential', 2], ['zoom'], 3, 10, 6, 34, 9, 120]}},
+  {id: 'mm-carriles', type: 'line', source: 'mm-carriles', layout: {'line-cap': 'round', 'line-join': 'round'}, paint: {
+    'line-color': ['get', 'color'], 'line-opacity': ['*', 0.55, ['get', 'op']], 'line-width': 1.5, 'line-dasharray': [3, 3]}},
   {id: 'mm-pais-borde', type: 'line', source: 'ne-paises', paint: {
     'line-color': ['coalesce', ['feature-state', 'borde'], c.frontera],
     'line-opacity': ['coalesce', ['feature-state', 'opBorde'], 0],
@@ -312,6 +325,10 @@ const capasAnotacion = (c: Paleta): LayerSpecification[] => [
     'line-color': ['get', 'color'], 'line-opacity': ['get', 'op'], 'line-width': 2.5, 'line-dasharray': [2, 1.5]}},
   {id: 'mm-zonas-borde-continuo', type: 'line', source: 'mm-zonas', filter: ['==', ['get', 'disc'], 0], paint: {
     'line-color': ['get', 'color'], 'line-opacity': ['get', 'op'], 'line-width': 2.5}},
+  // Resplandor suave bajo las rutas (se leen sobre cualquier fondo, como las líneas de luz de los documentales).
+  {id: 'mm-rutas-halo', type: 'line', source: 'mm-rutas', layout: {'line-cap': 'round', 'line-join': 'round'}, paint: {
+    'line-color': ['get', 'color'], 'line-width': ['*', ['get', 'grosor'], 3.5], 'line-blur': ['*', ['get', 'grosor'], 2.5],
+    'line-opacity': ['*', 0.28, ['get', 'op']]}},
   {id: 'mm-rutas-sombra', type: 'line', source: 'mm-rutas', layout: {'line-cap': 'round', 'line-join': 'round'}, paint: {
     'line-color': 'rgba(0,0,0,0.35)', 'line-width': ['+', ['get', 'grosor'], 3], 'line-blur': 3,
     'line-opacity': ['get', 'op'], 'line-translate': [0, 2]}},
@@ -341,7 +358,7 @@ const capasAnotacion = (c: Paleta): LayerSpecification[] => [
   {id: 'mm-pins-pulso', type: 'circle', source: 'mm-pins', filter: ['==', ['get', 'estilo'], 'pulso'], paint: {
     'circle-color': ['get', 'color'], 'circle-radius': ['get', 'radioPulso'], 'circle-opacity': ['get', 'opPulso'],
     'circle-pitch-alignment': 'map'}},
-  {id: 'mm-pins-punto', type: 'circle', source: 'mm-pins', filter: ['!=', ['get', 'estilo'], 'ficha'], paint: {
+  {id: 'mm-pins-punto', type: 'circle', source: 'mm-pins', filter: ['!', ['in', ['get', 'estilo'], ['literal', ['ficha', 'modelo']]]], paint: {
     'circle-color': ['get', 'color'], 'circle-radius': ['*', ['get', 'escala'], ['match', ['get', 'estilo'], 'capital', 9, 8]],
     'circle-opacity': ['get', 'op'], 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': ['*', ['get', 'escala'], 3],
     'circle-stroke-opacity': ['get', 'op']}},

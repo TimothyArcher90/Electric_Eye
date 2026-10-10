@@ -135,13 +135,13 @@ const completar = async (e) => {
       const r = resolverIso(e.pais ?? e.iso);
       return {...base, tipo: 'territorio', nombre: e.nombre ?? `Avance en ${r.nombre}`, iso: r.iso, color: color(e.color, BANDOS.aliado),
         opacidad: e.opacidad ?? 0.94, direccion: e.direccion ?? 0, avance: e.avance ?? 3, hasta_fraccion: e.hasta_fraccion ?? 1,
-        fundido: e.fundido ?? 0.3};
+        fundido: e.fundido ?? 0.3, ...(e.trama ? {trama: true, ...(e.color2 ? {color2: color(e.color2, BANDOS.adversario)} : {})} : {})};
     }
     case 'ficha':
       return {...base, tipo: 'pin', nombre: e.nombre ?? 'Ficha', en: coords(e), texto: e.texto ?? '', color: color(e.color, BANDOS.aliado),
         estilo: 'ficha', etiqueta: e.etiqueta ?? (e.texto ? 'papel' : 'ninguna'), icono: e.icono ?? '🪖', fondo: e.fondo ?? 'color',
         tamano: e.tamano ?? 1, fundido: e.fundido ?? 0.2,
-        forma: ['peana', 'unidad'].includes(e.forma) ? e.forma : 'hexagono'};
+        forma: ['peana', 'unidad'].includes(e.forma) ? e.forma : 'hexagono', ...(e.rumbo != null ? {rumbo: Number(e.rumbo)} : {})};
     case 'pin':
       return {...base, tipo: 'pin', nombre: e.nombre ?? e.texto ?? e.lugar ?? 'Pin', en: coords(e), texto: e.texto ?? String(e.lugar ?? '').toUpperCase(),
         color: color(e.color, BANDOS.bloque), estilo: e.estilo ?? 'pulso', etiqueta: e.etiqueta ?? 'papel', fundido: e.fundido ?? 0.3,
@@ -162,7 +162,18 @@ const completar = async (e) => {
     case 'zona':
       return {...base, tipo: 'zona', nombre: e.nombre ?? 'Zona', en: coords(e), radioKm: e.radioKm ?? 150,
         color: color(e.color, e.estilo === 'radar' ? '#3FD06A' : BANDOS.bloque), discontinua: e.discontinua ?? false,
-        estilo: e.estilo ?? 'area', fundido: e.fundido ?? 0.5};
+        estilo: e.estilo ?? 'area', fundido: e.fundido ?? 0.5,
+        ...(e.trama ? {trama: true, ...(e.color2 ? {color2: color(e.color2, BANDOS.adversario)} : {})} : {})};
+    case 'foco':
+      return {...base, tipo: 'foco', nombre: e.nombre ?? 'Foco', paises: (e.paises ?? [e.pais ?? e.iso]).filter(Boolean).map((q) => resolverIso(q).iso),
+        opacidad: e.opacidad ?? 0.45, fundido: e.fundido ?? 0.8};
+    case 'trafico': {
+      const puntos = (e.puntos ?? e.lugares ?? []).map((q) => (Array.isArray(q) ? q : resolverLugar(q).centro));
+      if (puntos.length < 2) throw new Error('El tráfico necesita al menos dos puntos o lugares (el corredor).');
+      return {...base, tipo: 'trafico', nombre: e.nombre ?? 'Tráfico', puntos, barcos: e.barcos ?? 18, vuelta: e.vuelta ?? 20,
+        sentido: e.sentido === 'ida' ? 'ida' : 'ambos', color: color(e.color, '#2E6F8E'), anchoKm: e.anchoKm ?? 25,
+        modelo: e.modelo ?? 'mixto', tamano: e.tamano ?? 0.6, carril: e.carril ?? true, fundido: e.fundido ?? 0.8};
+    }
     case 'titulo':
       return {...base, tipo: 'titulo', nombre: e.nombre ?? 'Título', texto: e.texto ?? '', subtitulo: e.subtitulo ?? '',
         posicion: e.posicion ?? 'arriba', hasta: e.hasta ?? (base.desde + 3.5), fundido: e.fundido ?? 0.4};
@@ -211,7 +222,7 @@ const servidor = new McpServer({name: 'electric-eye', version: '1.0.0'}, {
 });
 
 const elemento = z.object({
-  tipo: z.enum(['pais', 'territorio', 'frente', 'ficha', 'pin', 'ruta', 'texto', 'zona', 'titulo', 'columna', 'recorte', 'grafico']),
+  tipo: z.enum(['pais', 'territorio', 'frente', 'ficha', 'pin', 'ruta', 'texto', 'zona', 'titulo', 'columna', 'recorte', 'grafico', 'foco', 'trafico']),
 }).passthrough().describe('Elemento. Campos según tipo (ver guia_de_direccion). Lugares por nombre ("lugar") o [lon, lat] ("en").');
 
 servidor.registerTool('guia_de_direccion', {
@@ -282,6 +293,119 @@ servidor.registerTool('cambiar_formato', {
   return texto({formato: `${ancho}x${alto}`, zoomAdaptado: delta});
 });
 
+
+// ── Planos de cámara ──────────────────────────────────────────────────────────────
+// Velocidades de cámara que se leen bien en vídeo: acercamiento 0,3–0,6 niveles de zoom/s, giro 2–6°/s,
+// inclinación 5–10°/s. Por encima de eso el ojo lo ve como un salto.
+const MAX_ZOOM_S = 0.55;
+
+const avisosCamara = (camara) => {
+  const orden = [...camara].sort((a, b) => a.t - b.t);
+  const avisos = [];
+  for (let i = 1; i < orden.length; i++) {
+    const a = orden[i - 1];
+    const b = orden[i];
+    const dt = Math.max(0.01, b.t - a.t);
+    const dz = Math.abs(b.zoom - a.zoom);
+    const dr = Math.abs(((b.rumbo - a.rumbo + 540) % 360) - 180);
+    if (!b.vuelo && (dz / dt > 0.6 || dr / dt > 15)) {
+      avisos.push(`Entre ${a.t}s y ${b.t}s la cámara va demasiado rápida (zoom ${dz.toFixed(1)} en ${dt.toFixed(1)} s): ` +
+        `separa más las tomas (≥ ${Math.ceil(dz / 0.6)} s) o reduce el cambio de zoom.`);
+    }
+  }
+  return avisos;
+};
+
+// Mercator simple (para seguir una ruta).
+const rad = (g) => (g * Math.PI) / 180;
+const aM = ([lon, lat]) => [rad(lon), Math.log(Math.tan(Math.PI / 4 + rad(Math.max(-85, Math.min(85, lat))) / 2))];
+const deM = ([x, y]) => [(x * 180) / Math.PI, (2 * Math.atan(Math.exp(y)) - Math.PI / 2) * 180 / Math.PI];
+const enLinea = (pts, f) => {
+  const m = pts.map(aM);
+  const d = m.slice(1).map((q, i) => Math.hypot(q[0] - m[i][0], q[1] - m[i][1]));
+  let r = Math.min(1, Math.max(0, f)) * d.reduce((a, b) => a + b, 0);
+  let i = 0;
+  while (i < d.length - 1 && r > d[i]) r -= d[i++];
+  const k = d[i] ? r / d[i] : 0;
+  const a = m[i];
+  const b = m[i + 1];
+  return {en: deM([a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k]),
+    rumbo: ((Math.atan2(b[0] - a[0], b[1] - a[1]) * 180) / Math.PI + 360) % 360};
+};
+
+/** Convierte un plano (tipo de toma) en keyframes. Devuelve también la duración real y notas. */
+const generarPlano = (pl) => {
+  const t0 = pl.desde ?? 0;
+  let d = pl.duracion ?? 4;
+  const notas = [];
+  const centroDe = (lugar, centro) => centro ?? (lugar ? resolverLugar(lugar).centro : null);
+  const zoomDe = (lugar, zoom) => zoom ?? (lugar ? resolverLugar(lugar).zoom : 4);
+  const c = centroDe(pl.lugar, pl.centro);
+  const z = zoomDe(pl.lugar, pl.zoom);
+  const r = pl.rumbo ?? 0;
+  const inc = pl.inclinacion;
+  const kf = (t, centro, zoom, rumbo, inclinacion) => ({t: +t.toFixed(2), centro, zoom: +zoom.toFixed(2), rumbo: +rumbo.toFixed(1),
+    inclinacion: Math.max(0, Math.min(75, inclinacion)), curva: 'suave', vuelo: false});
+  switch (pl.tipo) {
+    case 'establecer': {
+      // Plano general que respira: casi quieto, un acercamiento mínimo para que no parezca una foto.
+      const dz = Math.min(0.06 * d, 0.45);
+      return {d, notas, kfs: [kf(t0, c, z, r, inc ?? 25), kf(t0 + d, c, z + dz, r - Math.min(3, d * 0.5), (inc ?? 25) + 8)]};
+    }
+    case 'acercar': case 'alejar': {
+      const c2 = centroDe(pl.hasta_lugar, pl.hasta_centro) ?? c;
+      const z2 = pl.zoom_final ?? (pl.hasta_lugar ? resolverLugar(pl.hasta_lugar).zoom : z + (pl.tipo === 'acercar' ? 1.5 : -1.8));
+      const minimo = Math.abs(z2 - z) / MAX_ZOOM_S;
+      if (d < minimo) {
+        notas.push(`El ${pl.tipo === 'acercar' ? 'acercamiento' : 'alejamiento'} necesitaba ${minimo.toFixed(1)} s para no dar un salto; lo alargué.`);
+        d = +minimo.toFixed(1);
+      }
+      const i1 = inc ?? (pl.tipo === 'acercar' ? 28 : 55);
+      const i2 = pl.inclinacion_final ?? (pl.tipo === 'acercar' ? 55 : 25);
+      const r2 = pl.rumbo_final ?? r - 6;
+      // Toma intermedia: la cámara empieza a moverse antes de bajar (como una grúa), sin pararse.
+      const mid = enLinea([c, c2], 0.55).en;
+      return {d, notas, kfs: [kf(t0, c, z, r, i1), kf(t0 + d * 0.55, mid, z + (z2 - z) * 0.5, r + (r2 - r) * 0.5, i1 + (i2 - i1) * 0.6),
+        kf(t0 + d, c2, z2, r2, i2)]};
+    }
+    case 'orbita': {
+      const vel = Math.max(-6, Math.min(6, pl.velocidad ?? 4)); // grados por segundo
+      const kfs = [];
+      const pasos = Math.max(2, Math.round(d / 2));
+      for (let k = 0; k <= pasos; k++) {
+        const t = (d * k) / pasos;
+        kfs.push(kf(t0 + t, c, z + 0.02 * t, r + vel * t, inc ?? 55));
+      }
+      return {d, notas, kfs};
+    }
+    case 'deriva': {
+      // Desplazamiento lateral lento con un pelín de zoom: el plano de "respiro" mientras se narra.
+      const dir = rad(pl.direccion ?? 90);
+      const anchoGrados = 360 / Math.pow(2, z) * 1.6; // ~ ancho del encuadre en grados de longitud
+      const paso = anchoGrados * 0.12;
+      const c2 = [c[0] + Math.sin(dir) * paso, c[1] + Math.cos(dir) * paso * 0.7];
+      return {d, notas, kfs: [kf(t0, c, z, r, inc ?? 45), kf(t0 + d, c2, z + Math.min(0.05 * d, 0.3), r - 2, (inc ?? 45) + 3)]};
+    }
+    case 'seguir_ruta': {
+      // La cámara acompaña la punta de una ruta que se dibuja en 'duracion' s (pon esa ruta con desde = este desde y
+      // trazo = esta duración). Mira un poco por delante para que la unidad entre en cuadro y no salga.
+      const pts = (pl.puntos ?? pl.lugares ?? []).map((q) => (Array.isArray(q) ? q : resolverLugar(q).centro));
+      if (pts.length < 2) throw new Error('seguir_ruta necesita puntos o lugares (al menos dos).');
+      const kfs = [];
+      const pasos = Math.max(3, Math.round(d / 1.2));
+      for (let k = 0; k <= pasos; k++) {
+        const p = k / pasos;
+        const f = 1 - Math.pow(1 - p, 2.2); // misma curva con la que se dibuja la ruta
+        const q = enLinea(pts, Math.min(1, f + 0.06));
+        kfs.push(kf(t0 + d * p, q.en, z, pl.girar ? q.rumbo : r, inc ?? 50));
+      }
+      return {d, notas, kfs};
+    }
+    default:
+      throw new Error(`Plano desconocido: ${pl.tipo}`);
+  }
+};
+
 servidor.registerTool('poner_camara', {
   title: 'Poner cámara', description: 'Sustituye los keyframes de cámara. Cada toma: t (s), lugar (nombre) o centro [lon, lat], zoom, rumbo (°), inclinacion (0–75°), curva (suave|lineal|entrada|salida), vuelo (bool).',
   inputSchema: {tomas: z.array(z.object({
@@ -298,25 +422,60 @@ servidor.registerTool('poner_camara', {
   });
   p.duracion = Math.max(p.duracion, ...p.camara.map((k) => k.t));
   await cargar(p);
-  // Movimientos bruscos: más de ~0,6 niveles de zoom por segundo (o giros de más de 15°/s) se ven como un salto.
-  const orden = [...p.camara].sort((a, b) => a.t - b.t);
-  const avisos = [];
-  for (let i = 1; i < orden.length; i++) {
-    const a = orden[i - 1];
-    const b = orden[i];
-    const dt = Math.max(0.01, b.t - a.t);
-    const dz = Math.abs(b.zoom - a.zoom);
-    const dr = Math.abs(((b.rumbo - a.rumbo + 540) % 360) - 180);
-    if (!b.vuelo && (dz / dt > 0.6 || dr / dt > 15)) {
-      avisos.push(`Entre ${a.t}s y ${b.t}s la cámara va demasiado rápida (zoom ${dz.toFixed(1)} en ${dt.toFixed(1)} s): ` +
-        `separa más las tomas (≥ ${Math.ceil(dz / 0.6)} s) o reduce el cambio de zoom.`);
-    }
-  }
+  const avisos = avisosCamara(p.camara);
   return texto({keyframes: p.camara.length, duracion: p.duracion, ...(avisos.length ? {avisos} : {})});
 });
 
+servidor.registerTool('planos_de_camara', {
+  title: 'Planos de cámara', description: 'Monta la cámara con planos de documental en vez de keyframes sueltos. Tipos: ' +
+    'establecer (plano general que respira), acercar / alejar (de un lugar a otro, con límite de velocidad), orbita (giro lento ' +
+    'alrededor de un punto, 3–6°/s), deriva (desplazamiento lento mientras se narra), seguir_ruta (acompaña la punta de una ruta; ' +
+    'usa la misma duración que su trazo). Cada plano: tipo, desde (s), duracion (s), lugar o centro, zoom; y según el tipo hasta_lugar/' +
+    'hasta_centro, zoom_final, rumbo, rumbo_final, inclinacion, inclinacion_final, velocidad (orbita), direccion (deriva, grados), ' +
+    'puntos/lugares y girar (seguir_ruta). Encadena los planos uno detrás de otro: la cámara pasa de uno a otro sin pararse. ' +
+    'modo: reemplazar (por defecto) o anadir (sustituye solo el tramo de tiempo de los planos).',
+  inputSchema: {planos: z.array(z.object({tipo: z.enum(['establecer', 'acercar', 'alejar', 'orbita', 'deriva', 'seguir_ruta'])}).passthrough()).min(1),
+    modo: z.enum(['reemplazar', 'anadir']).default('reemplazar')},
+}, async ({planos, modo}) => {
+  const p = await proyectoActual();
+  let cursor = 0;
+  const nuevos = [];
+  const notas = [];
+  let ultimo = null;
+  for (const pl of planos) {
+    const plano = {...pl, desde: pl.desde ?? cursor};
+    // Encadenado: lo que no se diga empieza donde acabó el plano anterior (sin saltos de encuadre).
+    if (ultimo && !plano.lugar && !plano.centro) {
+      plano.centro = ultimo.centro;
+      plano.zoom ??= ultimo.zoom;
+    }
+    if (ultimo) {
+      plano.rumbo ??= ultimo.rumbo;
+      plano.inclinacion ??= ultimo.inclinacion;
+    }
+    const g = generarPlano(plano);
+    cursor = plano.desde + g.d;
+    notas.push(...g.notas);
+    // Si este plano empieza justo donde acabó el anterior, la toma compartida se queda una sola vez.
+    for (const k of g.kfs) {
+      const i = nuevos.findIndex((x) => Math.abs(x.t - k.t) < 0.05);
+      if (i >= 0) nuevos.splice(i, 1);
+      nuevos.push({id: randomUUID().slice(0, 8), ...k});
+    }
+    ultimo = g.kfs[g.kfs.length - 1];
+  }
+  const ini = Math.min(...nuevos.map((k) => k.t));
+  const fin = Math.max(...nuevos.map((k) => k.t));
+  p.camara = modo === 'anadir' ? [...p.camara.filter((k) => k.t < ini - 0.05 || k.t > fin + 0.05), ...nuevos] : nuevos;
+  p.camara.sort((a, b) => a.t - b.t);
+  p.duracion = Math.max(p.duracion, fin);
+  await cargar(p);
+  const avisos = avisosCamara(p.camara);
+  return texto({keyframes: p.camara.length, hasta: fin, duracion: p.duracion, ...(notas.length ? {notas} : {}), ...(avisos.length ? {avisos} : {})});
+});
+
 servidor.registerTool('anadir_elementos', {
-  title: 'Añadir elementos', description: 'Añade países, frentes (territorio), fichas, pines, rutas, textos, zonas (area|objetivo|radar), títulos, columnas 3D, recortes de archivo (foto en marco: ruta o url) y gráficos de barras. Colores: hex o bando (adversario, aliado, bloque, neutro). Devuelve los id.',
+  title: 'Añadir elementos', description: 'Añade países, frentes (territorio, con trama para control disputado), fichas 3D (hexagono|peana|unidad), pines, rutas (con movil 3D), textos, zonas (area|objetivo|radar, trama para guerrilla o disputa), títulos, columnas 3D, foco (oscurece todo menos los países de la historia), trafico (muchos barcos 3D circulando por un corredor), recortes de archivo (foto en marco: ruta o url) y gráficos de barras. Colores: hex o bando (adversario, aliado, bloque, neutro). Devuelve los id.',
   inputSchema: {elementos: z.array(elemento).min(1)},
 }, async ({elementos}) => {
   const p = await proyectoActual();
