@@ -15,6 +15,8 @@ Estado a 10/10/2026. Lo que se compara con Caspian Report sale de medir fotogram
 | Movimiento | Flechas de ataque en 3D que avanzan, rutas que se dibujan, unidades que viajan por la ruta (drones, misiles, aviones), frentes que barren un país, objetivos que laten, radares, columnas 3D | Vista previa |
 | Texto | Títulos en Oswald con barra de acento, rótulos de papel, fuente en pantalla | Vídeo |
 | Óptica | Desenfoque de profundidad, viñeta, etalonaje cálido, desenfoque de movimiento opcional | Vídeo |
+| Archivo y datos | Recortes de archivo en marco de televisor antiguo, papel o limpio; gráficos de barras marrones que crecen | Vista previa |
+| Drones | Cuadricóptero, ala fija (tipo Bayraktar), Shahed y enjambre; vuelan por su ruta orientados al rumbo | Vídeo (chat → render) |
 | Formatos | 16:9, 9:16 (Reel, con zona segura), 4:5, 1:1, 4K | Vídeo |
 | Flujo | Chat dentro del editor → Claude monta, revisa y exporta → render en segundo plano → control de calidad → archivo en `D:\ElectricEye\salidas` | Prueba de punta a punta |
 
@@ -22,9 +24,8 @@ Estado a 10/10/2026. Lo que se compara con Caspian Report sale de medir fotogram
 
 Por orden de impacto en pantalla:
 
-1. **Recortes de archivo en marco** (foto o vídeo dentro de un marco tipo pantalla CRT o recorte de periódico) que
-   entran sobre el mapa. Caspian intercala archivo constantemente. → Elemento `recorte` (imagen o vídeo + marco).
-2. **Gráficos de datos sobre el mapa** (barras marrones, cifras grandes). → Elemento `grafico` en el overlay.
+1. **Vídeo de archivo** dentro del marco (hoy el recorte admite fotos; falta clip de vídeo).
+2. **Más tipos de gráfico** (líneas, cifra grande, comparativa) además de las barras.
 3. **Retratos en fichas** (líderes): ya se puede subir una imagen, pero falta una biblioteca y recorte automático.
 4. **Banderas reales** en fichas y unidades (ahora es un paño del color del bando).
 5. **Modelos 3D reales** (tanques, barcos en glTF) con Three.js sobre el mapa. Hoy son siluetas con volumen ilustrado,
