@@ -41,6 +41,9 @@ Taiwán), su nombre puede quedar fuera. Si debe leerse, añade un `texto` con el
   `submarino`, `avion`, `helicoptero`, `dron`, `misil`, `explosion`, `ancla` (base naval), `nuclear`, `petroleo`,
   `fabrica`, `mando`, `satelite`. (Los emojis de antes también valen: 🪖 ✈️ 🚢 🚀 💥 ⚓ ☢️ 🛢️ 🏭 ⭐.) Línea de frente = 4–10 fichas
   alineadas, separadas ~0,6–1° y con `desde` escalonado 0,15 s.
+  Formas (`forma`), como en la referencia: `hexagono` (ficha de pie, por defecto), `peana` (soldado o tanque de
+  pie sobre una base hexagonal del color del bando: para dibujar un frente, 4–8 en línea) y `unidad` (barco o
+  avión pequeño y blanco con sombra y banderita del color del bando: para flotas y aviación).
   Con un frente (`territorio`), pon las fichas de cada bando a ambos lados del borde del frente (≈0,6–0,8° a cada
   lado), en columna, nunca mezcladas ni encima. A zoom ≥ 5 usa `tamano` 0,7 para que no se tapen.
 - Objetivos: `zona` con `estilo: "objetivo"` (anillos rojos que laten, radioKm 25–60). Alcance: `estilo: "radar"`.

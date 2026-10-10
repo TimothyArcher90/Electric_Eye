@@ -124,7 +124,8 @@ const completar = (e) => {
     case 'ficha':
       return {...base, tipo: 'pin', nombre: e.nombre ?? 'Ficha', en: coords(e), texto: e.texto ?? '', color: color(e.color, BANDOS.aliado),
         estilo: 'ficha', etiqueta: e.etiqueta ?? (e.texto ? 'papel' : 'ninguna'), icono: e.icono ?? '🪖', fondo: e.fondo ?? 'color',
-        tamano: e.tamano ?? 1, fundido: e.fundido ?? 0.2};
+        tamano: e.tamano ?? 1, fundido: e.fundido ?? 0.2,
+        forma: ['peana', 'unidad'].includes(e.forma) ? e.forma : 'hexagono'};
     case 'pin':
       return {...base, tipo: 'pin', nombre: e.nombre ?? e.texto ?? e.lugar ?? 'Pin', en: coords(e), texto: e.texto ?? String(e.lugar ?? '').toUpperCase(),
         color: color(e.color, BANDOS.bloque), estilo: e.estilo ?? 'pulso', etiqueta: e.etiqueta ?? 'papel', fundido: e.fundido ?? 0.3,

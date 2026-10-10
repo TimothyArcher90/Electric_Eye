@@ -25,6 +25,8 @@ const nuclear = () => {
 
 export const ICONOS: Record<string, string> = {
   // Infantería: casco, cabeza y hombros.
+  // Infante de pie, con fusil (para las peanas de un frente).
+  infante: 'M38 14 Q50 2 62 14 L64 18 L36 18 Z M42 18 H58 V26 Q50 32 42 26 Z M34 30 Q50 26 66 30 L68 58 H61 L58 44 L57 60 H43 L42 44 L39 58 H32 Z M43 60 H49.5 L48 96 H39 Z M50.5 60 H57 L61 96 H52 Z M66 18 L70 17 L73 62 L69 63 Z',
   soldado: 'M26 46 Q50 16 74 46 L78 50 L22 50 Z M38 50 H62 V56 Q50 68 38 56 Z M18 88 Q20 66 40 62 L50 70 L60 62 Q80 66 82 88 Z',
   tanque: 'M14 70 H86 A8 8 0 0 1 86 86 H14 A8 8 0 0 1 14 70 Z M20 60 H80 L86 68 H14 Z M32 46 H62 L70 58 H28 Z M62 49 H94 V55 H62 Z',
   barco: 'M6 62 H94 L82 80 H18 Z M34 48 H60 V62 H34 Z M41 36 H54 V48 H41 Z M46.5 20 H48.5 V36 H46.5 Z M60 55 H80 V58.5 H60 Z M16 57 H30 V62 H16 Z',

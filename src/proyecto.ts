@@ -65,6 +65,9 @@ export type ElemPin = Base & {
   imagen?: string;
   fondo?: 'color' | 'blanco';
   tamano?: number;
+  /** hexagono (ficha de pie), peana (silueta de pie sobre una base hexagonal, para frentes) o unidad
+   * (barco o avión pequeño y blanco, con sombra y banderita del color del bando). */
+  forma?: 'hexagono' | 'peana' | 'unidad';
 };
 
 export type ElemTexto = Base & {

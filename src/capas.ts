@@ -91,7 +91,73 @@ const suave = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2,
 // ── Fichas hexagonales de pie ──────────────────────────────────────────────────────
 
 const idFicha = (e: ElemPin) =>
-  ['ficha', e.color, e.fondo ?? 'color', e.icono ?? '', e.imagen ? claveImagen(e.imagen) : ''].map(encodeURIComponent).join('|');
+  ['ficha', e.color, e.fondo ?? 'color', e.icono ?? '', e.imagen ? claveImagen(e.imagen) : '', e.forma ?? 'hexagono']
+    .map(encodeURIComponent).join('|');
+
+/** Hexágono aplastado (visto en perspectiva) para las peanas. */
+const hexPlano = (c: CanvasRenderingContext2D, cx: number, cy: number, r: number, k: number) => {
+  c.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const a = (Math.PI / 3) * i;
+    c[i ? 'lineTo' : 'moveTo'](cx + r * Math.cos(a), cy + r * Math.sin(a) * k);
+  }
+  c.closePath();
+};
+
+/** Silueta de pie sobre una base hexagonal de color (los frentes de la referencia). */
+const dibujarPeana = (color: string, icono: string) => lienzo(168, 200, (c) => {
+  const cx = 84;
+  const by = 168;
+  c.shadowColor = 'rgba(0,0,0,0.35)';
+  c.shadowBlur = 10;
+  c.shadowOffsetY = 5;
+  hexPlano(c, cx, by, 62, 0.42);
+  c.fillStyle = '#FFFFFF';
+  c.fill();
+  c.shadowColor = 'transparent';
+  hexPlano(c, cx, by - 3, 54, 0.42);
+  c.fillStyle = color;
+  c.fill();
+  const forma = silueta(icono === '🪖' || icono === 'soldado' || !icono ? 'infante' : icono) ?? silueta('infante')!;
+  c.save();
+  c.translate(cx - 60, by - 128);
+  c.scale(1.2, 1.2);
+  c.shadowColor = 'rgba(0,0,0,0.25)';
+  c.shadowBlur = 4;
+  c.fillStyle = '#1B1712';
+  c.fill(forma);
+  c.restore();
+});
+
+/** Barco o avión pequeño y blanco, con sombra y banderita del color del bando. */
+const dibujarUnidad = (color: string, icono: string) => lienzo(150, 130, (c) => {
+  const forma = silueta(icono || 'barco') ?? silueta('barco')!;
+  c.save();
+  c.translate(25, 22);
+  c.save();
+  c.translate(6, 10);
+  c.shadowColor = 'rgba(0,0,0,0.45)';
+  c.shadowBlur = 8;
+  c.fillStyle = 'rgba(0,0,0,0.35)';
+  c.fill(forma);
+  c.restore();
+  c.fillStyle = '#FFFFFF';
+  c.strokeStyle = 'rgba(30,24,18,0.75)';
+  c.lineWidth = 2.5;
+  c.stroke(forma);
+  c.fill(forma);
+  c.restore();
+  // Banderita: mástil fino y paño del color del bando.
+  c.fillStyle = '#2A2219';
+  c.fillRect(71, 4, 2.5, 34);
+  c.fillStyle = color;
+  c.strokeStyle = '#FFFFFF';
+  c.lineWidth = 2;
+  c.beginPath();
+  c.rect(73.5, 5, 26, 16);
+  c.fill();
+  c.stroke();
+});
 
 const hexagono = (c: CanvasRenderingContext2D, cx: number, cy: number, r: number) => {
   c.beginPath();
@@ -103,7 +169,9 @@ const hexagono = (c: CanvasRenderingContext2D, cx: number, cy: number, r: number
 };
 
 const dibujarFicha = (id: string) => {
-  const [, color, fondo, icono, clave] = id.split('|').map(decodeURIComponent);
+  const [, color, fondo, icono, clave, forma] = id.split('|').map(decodeURIComponent);
+  if (forma === 'peana') return dibujarPeana(color, icono);
+  if (forma === 'unidad') return dibujarUnidad(color, icono);
   const W = 168;
   const H = 176;
   return lienzo(W, H, (c) => {
