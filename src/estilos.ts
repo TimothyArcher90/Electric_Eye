@@ -154,8 +154,13 @@ const nombre = (o: OpcionesEstilo): ExpressionSpecification =>
 /** Fuentes de datos propias del portal (Natural Earth local + capas del proyecto). */
 const fuentesBase = (): Record<string, SourceSpecification> => ({
   'ne-paises': {type: 'geojson', data: abs('data/paises.geojson'), promoteId: 'iso', tolerance: 0.3},
-  // Mar = mundo menos tierra, con las mismas costas (scripts/generar-oceano.mjs). Tapa el relieve del fondo marino.
-  'ne-oceano': {type: 'geojson', data: abs('data/oceano.geojson'), tolerance: 0.3},
+  // Mar en terrazas por profundidad (scripts/preparar-batimetria.py) y fronteras solo en tierra (sin costa).
+  'ne-batimetria': {type: 'geojson', data: abs('data/batimetria.geojson'), tolerance: 0.4},
+  'ne-fronteras': {type: 'geojson', data: abs('data/fronteras-tierra.geojson'), tolerance: 0.3},
+  // Relieve fijo (scripts/generar-relieve.py): una imagen de atlas que solo se escala. El sombreado en vivo cambiaba
+  // de nivel de detalle al acercar la cámara y la tierra "hervía".
+  'relieve-fijo': {type: 'raster', tiles: [abs('relieve/') + '{z}/{x}/{y}.webp'], tileSize: 256, minzoom: 0, maxzoom: 6,
+    attribution: ATRIBUCION.terreno},
   'ne-etiquetas': {type: 'geojson', data: abs('data/paises-etiquetas.geojson')},
   'ne-ciudades': {type: 'geojson', data: abs('data/ciudades.geojson')},
   'ne-rios': {type: 'geojson', data: abs('data/rios.geojson'), tolerance: 0.5},
@@ -188,6 +193,10 @@ const RAMPA_ALTITUD: [number, string][] = [
   [2600, '#8B7460'], [3500, '#9C8F84'], [4600, '#ADA398'], [5300, '#D6D1CA'], [6200, '#FFFFFF'],
 ];
 
+// Terrazas del atlas (colores medidos en la referencia): plataforma gris verdosa, talud verde agua, fondo petróleo.
+const TERRAZAS_ATLAS = ['#C4CEC8', 200, '#B6CAC7', 1000, '#A0C3C6', 2000, '#8DBBC0', 3000, '#79AEB8', 4000, '#6AA2AF',
+  5000, '#5B95A3', 6000, '#4E8796'];
+
 // Batimetría del atlas (medida): plataforma gris verdosa, talud verde agua, fondo azul petróleo.
 const RAMPA_BATIMETRIA: [number, string][] = [
   [-7000, '#4E8E9C'], [-4500, '#5E9FAD'], [-3000, '#72AAB5'], [-1800, '#8AB7BF'],
@@ -204,12 +213,10 @@ const capasBase = (id: EstiloId, c: Paleta, o: OpcionesEstilo, rampa: [number, s
     if (id === 'satelite') {
       capas.push({id: 'satelite', type: 'raster', source: 'sat', paint: {'raster-saturation': -0.1, 'raster-contrast': 0.08}});
     } else if (id === 'atlas') {
-      // Mar por profundidad (la tierra la tapa el relleno crema de encima).
-      capas.push({id: 'batimetria', type: 'color-relief', source: 'dem-sombra', paint: {
-        'color-relief-color': ['interpolate', ['linear'], ['elevation'],
-          ...RAMPA_BATIMETRIA.flatMap(([m, col]) => [m, col])] as unknown as ExpressionSpecification,
-        'color-relief-opacity': 1,
-      }} as LayerSpecification);
+      // Mar en terrazas escalonadas por profundidad, con los colores medidos en la referencia.
+      capas.push({id: 'batimetria', type: 'fill', source: 'ne-batimetria', paint: {
+        'fill-color': ['step', ['get', 'prof'], ...TERRAZAS_ATLAS] as unknown as ExpressionSpecification,
+        'fill-antialias': false}});
       capas.push({id: 'tierra', type: 'fill', source: 'ne-paises', paint: {'fill-color': c.tierra}});
     } else if (id === 'realista') {
       // Sin red, al menos se ve la tierra; con red, la altitud colorea mar y montaña.
@@ -220,6 +227,10 @@ const capasBase = (id: EstiloId, c: Paleta, o: OpcionesEstilo, rampa: [number, s
         'color-relief-opacity': 1,
       }} as LayerSpecification);
     } else {
+      // Terrazas sutiles: cada escalón de profundidad oscurece un poco el color del mar del estilo.
+      capas.push({id: 'batimetria', type: 'fill', source: 'ne-batimetria', paint: {
+        'fill-color': '#000000', 'fill-antialias': false,
+        'fill-opacity': ['step', ['get', 'prof'], 0, 200, 0.04, 1000, 0.07, 2000, 0.1, 3000, 0.13, 4000, 0.16, 5000, 0.19, 6000, 0.22]}});
       capas.push({id: 'tierra', type: 'fill', source: 'ne-paises', paint: {'fill-color': c.tierra, 'fill-antialias': true}});
       if (o.colorearPaises) {
         const pal = c.politico;
@@ -254,25 +265,9 @@ const capasBase = (id: EstiloId, c: Paleta, o: OpcionesEstilo, rampa: [number, s
   }
 
   if (o.relieve || id === 'realista' || id === 'atlas') {
-    capas.push({id: 'relieve', type: 'hillshade', source: 'dem-sombra', paint: {
-      // 'igor' resalta las montañas y deja lisas las llanuras: sin la textura de "arena ondulada" que, con la
-      // cámara en movimiento, hacía que la tierra pareciera moverse. Solo el estilo Realista conserva todo el detalle.
-      'hillshade-method': id === 'realista' ? 'multidirectional' : 'igor',
-      'hillshade-exaggeration': c.intensidadRelieve,
-      'hillshade-shadow-color': c.sombra,
-      'hillshade-highlight-color': c.luz,
-      'hillshade-accent-color': c.sombra,
-      'hillshade-illumination-direction': 315,
-      // La luz se ancla al mapa, no a la pantalla: si no, al girar la cámara las sombras del relieve
-      // y del fondo marino se desplazan y parece que el fondo "se mueve".
-      'hillshade-illumination-anchor': 'map',
-    }});
-    // Mar liso: el relieve del fondo marino, con la cámara en movimiento y el desenfoque, parecía agua hirviendo
-    // (se veía barato). Se tapa con el color del mar; en el atlas se deja entrever un poco la batimetría.
-    if (!o.relieveMar && id !== 'satelite') {
-      capas.push({id: 'mar-liso', type: 'fill', source: 'ne-oceano', paint: {
-        'fill-color': c.oceano, 'fill-opacity': id === 'atlas' ? 0.92 : 1, 'fill-antialias': false}});
-    }
+    // Relieve fijo (imagen de atlas pre-calculada): solo marca las montañas y es idéntico en cada fotograma.
+    capas.push({id: 'relieve', type: 'raster', source: 'relieve-fijo', paint: {
+      'raster-opacity': Math.min(1, 0.35 + c.intensidadRelieve), 'raster-fade-duration': 0, 'raster-resampling': 'linear'}});
   }
 
   if (esVectorPropio) {
@@ -288,7 +283,8 @@ const capasBase = (id: EstiloId, c: Paleta, o: OpcionesEstilo, rampa: [number, s
         'line-dasharray': [3, 2],
       }});
     }
-    capas.push({id: 'fronteras', type: 'line', source: 'ne-paises', paint: {
+    // Solo fronteras en tierra: la costa no lleva trazo, el contraste lo da el mar (como en la referencia).
+    capas.push({id: 'fronteras', type: 'line', source: 'ne-fronteras', paint: {
       'line-color': c.frontera,
       'line-width': ['interpolate', ['linear'], ['zoom'], 1, 0.5, 4, 1, 7, 1.8, 10, 2.6],
     }});

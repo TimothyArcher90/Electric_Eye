@@ -136,7 +136,8 @@ con paleta, rampa de altitud, rótulos y opciones.
 | Capa | Fuente | Licencia |
 |---|---|---|
 | Países, ciudades, ríos, lagos, mares, provincias | [Natural Earth](https://www.naturalearthdata.com) (incluido en `public/data/`) | Dominio público |
-| Relieve, batimetría y terreno 3D | Terrarium (Mapzen / Joerd) en AWS Open Data | Abierta, con atribución |
+| Relieve fijo (`public/relieve/`, generado con `scripts/generar-relieve.py`) y terreno 3D | Terrarium (Mapzen / Joerd) en AWS Open Data | Abierta, con atribución |
+| Mar en terrazas (`batimetria.geojson`) y fronteras terrestres | Natural Earth 10m bathymetry y admin-0 boundary lines (`scripts/preparar-batimetria.py`) | Dominio público |
 | Satélite | Sentinel-2 cloudless **2016** de EOX | CC BY 4.0 |
 | Calles | OpenFreeMap (datos de OpenStreetMap) | ODbL, "© OpenStreetMap contributors" |
 | Tipografía | Noto Sans, Cinzel y EB Garamond (glifos en `public/fonts/`, generados con `scripts/generar-glifos.py`) | SIL Open Font License |

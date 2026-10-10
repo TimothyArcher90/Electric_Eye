@@ -70,6 +70,8 @@ if (!existsSync(join(DIST, 'index.html'))) {
   const {build} = await import('vite');
   await build({root: RAIZ, logLevel: 'error'});
 }
+// PNG transparente de 1×1 px.
+const PNG_VACIO = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg==', 'base64');
 const TIPOS = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.json': 'application/json', '.geojson': 'application/geo+json', '.pbf': 'application/x-protobuf',
@@ -132,6 +134,11 @@ const web = createServer((req, res) => {
   }
   let archivo = normalize(join(DIST, ruta.endsWith('/') ? `${ruta}index.html` : ruta));
   if (!archivo.startsWith(DIST + sep) && archivo !== DIST) archivo = join(DIST, 'index.html');
+  if ((!existsSync(archivo) || statSync(archivo).isDirectory()) && ruta.startsWith('/relieve/')) {
+    // Teselas de relieve que no existen (mar, llanura): una imagen transparente, sin errores en el mapa.
+    res.writeHead(200, {'Content-Type': 'image/png', 'Cache-Control': 'max-age=86400'}).end(PNG_VACIO);
+    return;
+  }
   if (!existsSync(archivo) || statSync(archivo).isDirectory()) {
     res.writeHead(404).end('No encontrado');
     return;

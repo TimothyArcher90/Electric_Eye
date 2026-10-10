@@ -130,8 +130,6 @@ export type EstiloId = 'atlas' | 'documental' | 'geopolitico' | 'realista' | 'no
 
 export type OpcionesEstilo = {
   relieve: boolean;
-  /** Relieve también en el fondo del mar (por defecto no: el mar queda liso). */
-  relieveMar?: boolean;
   terreno3d: boolean;
   exageracion: number;
   globo: boolean;
