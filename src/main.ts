@@ -215,9 +215,11 @@ const ajustarFps = (s: number) => Math.round(s * p.fps) / p.fps;
 
 const COLOR_TIPO: Record<TipoElemento, string> = {
   pais: '#8A5CF6', ruta: '#E0402B', pin: '#F59E0B', texto: '#10B981', zona: '#3B82F6', titulo: '#EC4899', territorio: '#5C844E', columna: '#7A5C3A',
+  recorte: '#64748B', grafico: '#B45309',
 };
 const NOMBRE_TIPO: Record<TipoElemento, string> = {
   pais: 'País', ruta: 'Ruta', pin: 'Pin', texto: 'Texto', zona: 'Zona', titulo: 'Título', territorio: 'Territorio', columna: 'Columna 3D',
+  recorte: 'Recorte', grafico: 'Gráfico',
 };
 
 function actualizarCabezal() {
@@ -631,6 +633,25 @@ function renderInspector() {
           cNum('Radio (km)', e.radioKm, (n) => (e.radioKm = Math.max(1, n)), {min: 1, paso: 5})),
         fila(cSelect('Forma', e.forma, [['hexagono', 'Hexágono'], ['cilindro', 'Cilindro'], ['prisma', 'Prisma']], (v) => (e.forma = v)),
           cNum('Crece en (s)', e.crece, (n) => (e.crece = Math.max(0, n)), {min: 0, paso: 0.1})),
+      );
+      break;
+    case 'recorte':
+      ins.append(
+        cTexto('Pie de foto', e.pie, (s) => (e.pie = s)),
+        fila(cSelect('Marco', e.marco, [['crt', 'Televisor (CRT)'], ['papel', 'Papel'], ['limpio', 'Limpio']], (v) => (e.marco = v)),
+          cSelect('Posición', e.posicion, [['izquierda', 'Izquierda'], ['derecha', 'Derecha'], ['centro', 'Centro']], (v) => (e.posicion = v))),
+        cNum('Ancho (0–1)', e.ancho, (n) => (e.ancho = Math.min(0.9, Math.max(0.15, n))), {min: 0.15, paso: 0.05}),
+      );
+      break;
+    case 'grafico':
+      ins.append(
+        cTexto('Título', e.titulo, (s) => (e.titulo = s)),
+        cTexto('Barras (etiqueta: valor; …)', e.barras.map((b) => `${b.etiqueta}: ${b.valor}`).join('; '), (s) => {
+          e.barras = s.split(';').map((x) => x.split(':')).filter((x) => x.length === 2 && x[0].trim())
+            .map(([a, b]) => ({etiqueta: a.trim(), valor: Number(b.replace(',', '.')) || 0}));
+        }),
+        fila(cTexto('Unidad', e.unidad, (s) => (e.unidad = s)),
+          cSelect('Posición', e.posicion, [['izquierda', 'Izquierda'], ['derecha', 'Derecha'], ['centro', 'Centro']], (v) => (e.posicion = v))),
       );
       break;
     case 'titulo':

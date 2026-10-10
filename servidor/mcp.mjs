@@ -107,7 +107,23 @@ const coords = (e, campo = 'en') => {
 const BANDOS = {adversario: '#CB8C5B', aliado: '#5C844E', bloque: '#C74227', neutro: '#9C8F84'};
 const color = (c, porDefecto) => BANDOS[c] ?? c ?? porDefecto;
 
-const completar = (e) => {
+/** Imagen para un recorte: ruta local, URL o data URL → data URL (el lienzo del vídeo no admite imágenes de otro origen). */
+const TIPOS_IMG = {png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif'};
+const imagenComoDataUrl = async (e) => {
+  const fuente = e.imagen ?? e.ruta ?? e.url;
+  if (!fuente) throw new Error('Un recorte necesita "ruta" (archivo de imagen) o "url".');
+  if (String(fuente).startsWith('data:')) return fuente;
+  if (/^https?:\/\//.test(fuente)) {
+    const r = await fetch(fuente);
+    if (!r.ok) throw new Error(`No pude descargar la imagen (${r.status}).`);
+    const tipo = r.headers.get('content-type') ?? 'image/jpeg';
+    return `data:${tipo};base64,${Buffer.from(await r.arrayBuffer()).toString('base64')}`;
+  }
+  const ext = String(fuente).split('.').pop().toLowerCase();
+  return `data:${TIPOS_IMG[ext] ?? 'image/jpeg'};base64,${readFileSync(fuente).toString('base64')}`;
+};
+
+const completar = async (e) => {
   const base = {id: randomUUID().slice(0, 8), desde: e.desde ?? 0, hasta: e.hasta ?? null, oculto: false};
   switch (e.tipo) {
     case 'pais': {
@@ -150,6 +166,17 @@ const completar = (e) => {
     case 'titulo':
       return {...base, tipo: 'titulo', nombre: e.nombre ?? 'Título', texto: e.texto ?? '', subtitulo: e.subtitulo ?? '',
         posicion: e.posicion ?? 'arriba', hasta: e.hasta ?? (base.desde + 3.5), fundido: e.fundido ?? 0.4};
+    case 'recorte':
+      return {...base, tipo: 'recorte', nombre: e.nombre ?? e.pie ?? 'Recorte', imagen: await imagenComoDataUrl(e), pie: e.pie ?? '',
+        marco: ['crt', 'papel', 'limpio'].includes(e.marco) ? e.marco : 'crt',
+        posicion: ['izquierda', 'derecha', 'centro'].includes(e.posicion) ? e.posicion : 'derecha', ancho: e.ancho ?? 0.36,
+        fundido: e.fundido ?? 0.5};
+    case 'grafico':
+      return {...base, tipo: 'grafico', nombre: e.nombre ?? e.titulo ?? 'Gráfico', titulo: e.titulo ?? '', unidad: e.unidad ?? '',
+        barras: (e.barras ?? []).map((b) => ({etiqueta: String(b.etiqueta ?? ''), valor: Number(b.valor) || 0,
+          ...(b.color ? {color: color(b.color, '#8C5A3C')} : {})})),
+        posicion: ['izquierda', 'derecha', 'centro'].includes(e.posicion) ? e.posicion : 'derecha', crece: e.crece ?? 1.5,
+        fundido: e.fundido ?? 0.5};
     case 'columna':
       return {...base, tipo: 'columna', nombre: e.nombre ?? e.texto ?? 'Columna', en: coords(e), alturaKm: e.alturaKm ?? 120,
         radioKm: e.radioKm ?? 25, color: color(e.color, BANDOS.adversario), forma: e.forma ?? 'hexagono', texto: e.texto ?? '',
@@ -184,7 +211,7 @@ const servidor = new McpServer({name: 'electric-eye', version: '1.0.0'}, {
 });
 
 const elemento = z.object({
-  tipo: z.enum(['pais', 'territorio', 'frente', 'ficha', 'pin', 'ruta', 'texto', 'zona', 'titulo', 'columna']),
+  tipo: z.enum(['pais', 'territorio', 'frente', 'ficha', 'pin', 'ruta', 'texto', 'zona', 'titulo', 'columna', 'recorte', 'grafico']),
 }).passthrough().describe('Elemento. Campos según tipo (ver guia_de_direccion). Lugares por nombre ("lugar") o [lon, lat] ("en").');
 
 servidor.registerTool('guia_de_direccion', {
@@ -289,11 +316,11 @@ servidor.registerTool('poner_camara', {
 });
 
 servidor.registerTool('anadir_elementos', {
-  title: 'Añadir elementos', description: 'Añade países, frentes (territorio), fichas, pines, rutas, textos, zonas (area|objetivo|radar), títulos y columnas 3D. Colores: hex o bando (adversario, aliado, bloque, neutro). Devuelve los id.',
+  title: 'Añadir elementos', description: 'Añade países, frentes (territorio), fichas, pines, rutas, textos, zonas (area|objetivo|radar), títulos, columnas 3D, recortes de archivo (foto en marco: ruta o url) y gráficos de barras. Colores: hex o bando (adversario, aliado, bloque, neutro). Devuelve los id.',
   inputSchema: {elementos: z.array(elemento).min(1)},
 }, async ({elementos}) => {
   const p = await proyectoActual();
-  const nuevos = elementos.map(completar);
+  const nuevos = await Promise.all(elementos.map(completar));
   p.elementos.push(...nuevos);
   await cargar(p);
   return texto(nuevos.map((e) => ({id: e.id, tipo: e.tipo, nombre: e.nombre})));

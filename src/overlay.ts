@@ -1,7 +1,7 @@
 import {visibilidad} from './geo';
 import {imagenCargada} from './capas';
 import {paletaDe} from './estilos';
-import type {ElemTitulo, OpcionesEstilo, Proyecto} from './proyecto';
+import type {ElemGrafico, ElemRecorte, ElemTitulo, OpcionesEstilo, Proyecto} from './proyecto';
 
 // Capa 2D encima del mapa: títulos, fuente, grano de película y viñeta.
 // La misma función pinta la vista previa y cada fotograma exportado.
@@ -132,6 +132,15 @@ export const pintarOverlay = (ctx: CanvasRenderingContext2D, w: number, h: numbe
     ctx.restore();
   }
 
+  // Recortes de archivo y gráficos (debajo de los títulos)
+  for (const e of p.elementos) {
+    if (e.oculto || (e.tipo !== 'recorte' && e.tipo !== 'grafico')) continue;
+    const op = visibilidad(t, e.desde, e.hasta, e.fundido);
+    if (op <= 0) continue;
+    if (e.tipo === 'recorte') pintarRecorte(ctx, w, h, u, e, op);
+    else pintarGrafico(ctx, w, h, u, e, op, t);
+  }
+
   // Títulos
   for (const e of p.elementos) {
     if (e.tipo !== 'titulo' || e.oculto) continue;
@@ -237,5 +246,156 @@ const pintarTitulo = (
     ctx.fillStyle = papel ? '#4A4337' : 'rgba(255,255,255,0.8)';
     ctx.fillText(e.subtitulo, w / 2, y + pad * 0.7 + tam * 1.2);
   }
+  ctx.restore();
+};
+
+const suaveSalida = (x: number) => 1 - Math.pow(1 - Math.min(1, Math.max(0, x)), 3);
+
+const rectRedondo = (c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) => {
+  c.beginPath();
+  c.roundRect(x, y, w, h, r);
+};
+
+/** Foto de archivo en un marco (televisor antiguo, papel o limpio) que entra deslizándose sobre el mapa. */
+const pintarRecorte = (ctx: CanvasRenderingContext2D, w: number, h: number, u: number, e: ElemRecorte, op: number) => {
+  const img = imagenCargada(e.imagen);
+  if (!img) return;
+  const vertical = h > w;
+  const anchoMax = w * (vertical ? Math.max(e.ancho, 0.72) : e.ancho);
+  let W = anchoMax;
+  let H = (W * img.height) / img.width;
+  if (H > h * 0.5) {
+    H = h * 0.5;
+    W = (H * img.width) / img.height;
+  }
+  const margen = w * 0.06;
+  const x = e.posicion === 'izquierda' ? margen : e.posicion === 'derecha' ? w - W - margen : (w - W) / 2;
+  const y = vertical ? h * 0.2 : h * 0.16;
+  const k = suaveSalida(op);
+  const lado = e.posicion === 'derecha' ? 1 : e.posicion === 'izquierda' ? -1 : 0;
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, op * 1.4);
+  ctx.translate(x + W / 2 + lado * (1 - k) * 80 * u, y + H / 2 + (lado === 0 ? (1 - k) * 40 * u : 0));
+  ctx.rotate(((e.marco === 'papel' ? 2 : e.marco === 'crt' ? -1.2 : 0) * Math.PI) / 180);
+  ctx.scale(0.94 + 0.06 * k, 0.94 + 0.06 * k);
+  ctx.translate(-W / 2, -H / 2);
+  ctx.shadowColor = 'rgba(0,0,0,0.45)';
+  ctx.shadowBlur = 30 * u;
+  ctx.shadowOffsetY = 12 * u;
+  if (e.marco === 'crt') {
+    // Carcasa de televisor: marco oscuro redondeado, pantalla con líneas y viñeta.
+    const b = 26 * u;
+    const carcasa = ctx.createLinearGradient(0, -b, 0, H + b);
+    carcasa.addColorStop(0, '#3A352E');
+    carcasa.addColorStop(1, '#16130F');
+    rectRedondo(ctx, -b, -b, W + 2 * b, H + 2 * b, 26 * u);
+    ctx.fillStyle = carcasa;
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.save();
+    rectRedondo(ctx, 0, 0, W, H, 34 * u);
+    ctx.clip();
+    ctx.filter = 'saturate(0.75) contrast(1.08) sepia(0.15)';
+    ctx.drawImage(img, 0, 0, W, H);
+    ctx.filter = 'none';
+    ctx.fillStyle = 'rgba(0,0,0,0.13)';
+    for (let yy = 0; yy < H; yy += 4 * u) ctx.fillRect(0, yy, W, 1.6 * u);
+    const vin = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.hypot(W, H) * 0.6);
+    vin.addColorStop(0, 'rgba(0,0,0,0)');
+    vin.addColorStop(1, 'rgba(0,0,0,0.55)');
+    ctx.fillStyle = vin;
+    ctx.fillRect(0, 0, W, H);
+    const brillo = ctx.createLinearGradient(0, 0, W, H);
+    brillo.addColorStop(0, 'rgba(255,255,255,0.12)');
+    brillo.addColorStop(0.4, 'rgba(255,255,255,0)');
+    ctx.fillStyle = brillo;
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  } else {
+    const b = e.marco === 'papel' ? 14 * u : 5 * u;
+    ctx.fillStyle = e.marco === 'papel' ? '#FBF7EE' : '#FFFFFF';
+    ctx.fillRect(-b, -b, W + 2 * b, H + 2 * b + (e.marco === 'papel' && e.pie ? 44 * u : 0));
+    ctx.shadowColor = 'transparent';
+    ctx.drawImage(img, 0, 0, W, H);
+  }
+  if (e.pie) {
+    ctx.shadowColor = 'transparent';
+    ctx.font = `600 ${Math.round(24 * u)}px ${SANS}`;
+    ctx.textBaseline = 'top';
+    if (e.marco === 'papel') {
+      ctx.fillStyle = '#2B2722';
+      ctx.textAlign = 'left';
+      ctx.fillText(e.pie, 0, H + 12 * u, W);
+    } else {
+      // Rótulo oscuro bajo la imagen.
+      const tw = Math.min(W, ctx.measureText(e.pie).width + 28 * u);
+      const yy = H + (e.marco === 'crt' ? 40 : 14) * u;
+      ctx.fillStyle = 'rgba(12,16,22,0.88)';
+      ctx.fillRect(0, yy, tw, 40 * u);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.textAlign = 'left';
+      ctx.fillText(e.pie, 14 * u, yy + 8 * u, W - 28 * u);
+    }
+  }
+  ctx.restore();
+};
+
+/** Gráfico de barras sobre papel (barras marrones como en los documentales), que crecen al entrar. */
+const pintarGrafico = (ctx: CanvasRenderingContext2D, w: number, h: number, u: number, e: ElemGrafico, op: number, t: number) => {
+  if (!e.barras.length) return;
+  const vertical = h > w;
+  const W = vertical ? w * 0.84 : w * 0.36;
+  const H = vertical ? h * 0.34 : h * 0.5;
+  const margen = w * 0.06;
+  const x = vertical ? (w - W) / 2 : e.posicion === 'izquierda' ? margen : e.posicion === 'derecha' ? w - W - margen : (w - W) / 2;
+  const y = vertical ? h * 0.42 : h * 0.24;
+  const k = suaveSalida(op);
+  const crec = suaveSalida(e.crece > 0 ? (t - e.desde) / e.crece : 1);
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, op * 1.4);
+  ctx.translate(0, (1 - k) * 30 * u);
+  ctx.shadowColor = 'rgba(0,0,0,0.35)';
+  ctx.shadowBlur = 26 * u;
+  ctx.shadowOffsetY = 10 * u;
+  ctx.fillStyle = 'rgba(251,247,238,0.96)';
+  ctx.fillRect(x, y, W, H);
+  ctx.shadowColor = 'transparent';
+  const pad = 28 * u;
+  ctx.fillStyle = '#1F1A15';
+  ctx.font = `600 ${Math.round(34 * u)}px ${TITULAR}`;
+  ctx.letterSpacing = `${1.5 * u}px`;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText(e.titulo.toUpperCase(), x + pad, y + pad * 0.8, W - 2 * pad);
+  ctx.letterSpacing = '0px';
+  const max = Math.max(...e.barras.map((b) => b.valor), 1e-9);
+  const zonaY = y + pad * 0.8 + 56 * u;
+  const zonaH = H - (zonaY - y) - 56 * u;
+  const n = e.barras.length;
+  const hueco = (W - 2 * pad) / n;
+  const anchoBarra = Math.min(hueco * 0.62, 120 * u);
+  const fmt = new Intl.NumberFormat('es-ES', {maximumFractionDigits: 1});
+  e.barras.forEach((b, i) => {
+    const retraso = Math.min(1, Math.max(0, crec * 1.4 - i * 0.12));
+    const alto = (b.valor / max) * zonaH * suaveSalida(retraso);
+    const bx = x + pad + hueco * i + (hueco - anchoBarra) / 2;
+    const by = zonaY + zonaH - alto;
+    const g = ctx.createLinearGradient(bx, 0, bx + anchoBarra, 0);
+    const col = b.color ?? '#8C5A3C';
+    g.addColorStop(0, col);
+    g.addColorStop(1, '#5E3B26');
+    ctx.fillStyle = g;
+    ctx.fillRect(bx, by, anchoBarra, alto);
+    ctx.fillStyle = '#1F1A15';
+    ctx.textAlign = 'center';
+    ctx.font = `700 ${Math.round(24 * u)}px ${SANS}`;
+    if (retraso > 0.05) ctx.fillText(`${fmt.format(b.valor * suaveSalida(retraso))}${e.unidad ? ` ${e.unidad}` : ''}`, bx + anchoBarra / 2, by - 32 * u);
+    ctx.font = `500 ${Math.round(20 * u)}px ${SANS}`;
+    ctx.fillStyle = '#4A4337';
+    ctx.fillText(b.etiqueta, bx + anchoBarra / 2, zonaY + zonaH + 12 * u, hueco - 6 * u);
+  });
+  // Línea base
+  ctx.fillStyle = '#3A322A';
+  ctx.fillRect(x + pad, zonaY + zonaH, W - 2 * pad, 2 * u);
   ctx.restore();
 };

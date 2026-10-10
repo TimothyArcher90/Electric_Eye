@@ -63,6 +63,12 @@ Taiwán), su nombre puede quedar fuera. Si debe leerse, añade un `texto` con el
   Escala real: a zoom 5–6 usa 40–200 km de altura y 15–40 km de radio; a zoom 3–4, hasta 600 km. Requiere
   inclinación ≥ 45°. No pongas columnas delante de fichas o rótulos: muévelas o baja la altura.
 - `titulo` para el gancho (0,3–3,5 s). Pocas palabras, en mayúsculas.
+- Archivo sobre el mapa (`recorte`): una foto que el usuario te da (`ruta` a un archivo o `url`) en un marco `crt`
+  (televisor antiguo, el de la referencia), `papel` o `limpio`, a un lado (`posicion`), con `pie` corto. 3–5 s. Que
+  no tape la acción: si la acción está a la izquierda, el recorte a la derecha. Nunca inventes ni busques fotos por tu
+  cuenta: solo las que te pasen.
+- Cifras (`grafico`): barras marrones sobre papel con `titulo`, `barras` [{etiqueta, valor}], `unidad`. Solo con
+  cifras que dé el usuario y con la fuente en pantalla (`configurar_estilo({fuente})`).
 
 ## Cámara
 

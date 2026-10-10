@@ -116,6 +116,28 @@ export type ElemTitulo = Base & {
   posicion: 'arriba' | 'abajo' | 'centro';
 };
 
+/** Recorte de archivo (foto) en un marco que entra sobre el mapa: televisor antiguo, papel o limpio. */
+export type ElemRecorte = Base & {
+  tipo: 'recorte';
+  imagen: string;
+  pie: string;
+  marco: 'crt' | 'papel' | 'limpio';
+  posicion: 'izquierda' | 'derecha' | 'centro';
+  /** Ancho del recorte respecto al ancho del vídeo (0,2–0,7). */
+  ancho: number;
+};
+
+/** Gráfico de barras sobre el mapa (cifras que da el usuario, con fuente). */
+export type ElemGrafico = Base & {
+  tipo: 'grafico';
+  titulo: string;
+  barras: {etiqueta: string; valor: number; color?: string}[];
+  unidad: string;
+  posicion: 'izquierda' | 'derecha' | 'centro';
+  /** Segundos que tardan las barras en crecer. */
+  crece: number;
+};
+
 /** Figura 3D: columna extruida sobre un punto (cifras, presencia militar, producción…). */
 export type ElemColumna = Base & {
   tipo: 'columna';
@@ -130,7 +152,7 @@ export type ElemColumna = Base & {
   crece: number;
 };
 
-export type Elemento = ElemPais | ElemRuta | ElemPin | ElemTexto | ElemZona | ElemTitulo | ElemTerritorio | ElemColumna;
+export type Elemento = ElemPais | ElemRuta | ElemPin | ElemTexto | ElemZona | ElemTitulo | ElemTerritorio | ElemColumna | ElemRecorte | ElemGrafico;
 export type TipoElemento = Elemento['tipo'];
 
 export type EstiloId = 'atlas' | 'documental' | 'geopolitico' | 'realista' | 'noche' | 'satelite' | 'calles' | 'minimal';

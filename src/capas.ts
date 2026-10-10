@@ -16,7 +16,7 @@ export const claveImagen = (dataUrl: string) => {
 export const imagenCargada = (dataUrl: string) => imagenes.get(claveImagen(dataUrl));
 export const precargarImagenes = async (p: Proyecto) => {
   const urls = [
-    ...p.elementos.flatMap((e) => (e.tipo === 'pin' && e.imagen ? [e.imagen] : [])),
+    ...p.elementos.flatMap((e) => (e.tipo === 'pin' && e.imagen ? [e.imagen] : e.tipo === 'recorte' && e.imagen ? [e.imagen] : [])),
     ...(p.marca?.imagen ? [p.marca.imagen] : []),
   ];
   await Promise.all(urls.map(async (u) => {
